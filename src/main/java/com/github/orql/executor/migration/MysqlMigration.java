@@ -1,5 +1,6 @@
 package com.github.orql.executor.migration;
 
+import com.github.orql.executor.Cascade;
 import com.github.orql.executor.Configuration;
 import com.github.orql.executor.Session;
 import com.github.orql.executor.schema.Column;
@@ -22,6 +23,8 @@ public class MysqlMigration implements Migration {
     private static class FK {
         String name;
         String ref;
+        String onUpdate;
+        String onDelete;
     }
 
     private static class Field {
@@ -33,15 +36,12 @@ public class MysqlMigration implements Migration {
 
     private Configuration configuration;
 
-    private String database;
-
     private static final String typePatternString = "(.+?)\\((.+?)\\)";
 
     private static final Pattern typePattern = Pattern.compile(typePatternString);
 
-    public MysqlMigration(Configuration configuration, String database) {
+    public MysqlMigration(Configuration configuration) {
         this.configuration = configuration;
-        this.database = database;
     }
 
     @Override
@@ -51,7 +51,7 @@ public class MysqlMigration implements Migration {
             createTable(session, entry.getValue());
         }
         for (Map.Entry<String, Schema> entry : schemaManager.getSchemas().entrySet()) {
-            updateFks(session, entry.getValue(), database);
+            updateFks(session, entry.getValue());
         }
     }
 
@@ -67,7 +67,7 @@ public class MysqlMigration implements Migration {
             }
             String sql = "select COLUMN_NAME as name, IS_NULLABLE as nullable, COLUMN_TYPE as type " +
                     "from information_schema.columns " +
-                    "where table_schema = '" + database + "' && table_name = '" + schema.getTable() + "'";
+                    "where table_schema = database() and table_name = '" + schema.getTable() + "'";
             List<String> fieldNames = new ArrayList<>();
             List<Field> fields = new ArrayList<>();
             ResultSet fieldResultSet = session.buildNative().sql(sql).query();
@@ -112,7 +112,7 @@ public class MysqlMigration implements Migration {
             }
         }
         for (Map.Entry<String, Schema> entry : schemaManager.getSchemas().entrySet()) {
-            updateFks(session, entry.getValue(), database);
+            updateFks(session, entry.getValue());
         }
     }
 
@@ -178,23 +178,36 @@ public class MysqlMigration implements Migration {
             case Enum:
                 type = "enum";
                 break;
+            case Double:
+                type = "double";
+                break;
         }
         return column.getLength() != null && column.getLength() > 0 ? (type + "(" + column.getLength() + ")") : type;
     }
-    private void updateFks(Session session, Schema schema, String database) throws SQLException {
-        String queryFKSql = "select COLUMN_NAME as name, REFERENCED_TABLE_NAME as ref, REFERENCED_COLUMN_NAME as refKey " +
-                "from INFORMATION_SCHEMA.KEY_COLUMN_USAGE " +
-                "where CONSTRAINT_SCHEMA = '" + database + "' && TABLE_NAME = '" + schema.getTable() + "' && CONSTRAINT_NAME <> 'PRIMARY'";
+    private void updateFks(Session session, Schema schema) throws SQLException {
+        String queryFKSql = "select " +
+                "u.COLUMN_NAME as name, " +
+                "u.REFERENCED_TABLE_NAME as ref, " +
+                "u.REFERENCED_COLUMN_NAME as refKey, " +
+                "r.UPDATE_RULE AS onUpdate, " +
+                "r.DELETE_RULE AS onDelete " +
+                "FROM  INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS r " +
+                "INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS u ON u.CONSTRAINT_NAME = r.CONSTRAINT_NAME and u.CONSTRAINT_NAME <> 'PRIMARY' AND u.table_schema = r.constraint_schema AND u.table_name = r.table_name " +
+                "WHERE u.constraint_schema = database() AND u.table_name = '" + schema.getTable() + "'";
         ResultSet fkResultSet = session.buildNative().sql(queryFKSql).query();
         List<String> fkNames = new ArrayList<>();
         List<FK> fks = new ArrayList<>();
         while (fkResultSet.next()) {
             String name = fkResultSet.getString("name");
             String ref = fkResultSet.getString("ref");
+            String onUpdate = fkResultSet.getString("onUpdate");
+            String onDelete = fkResultSet.getString("onDelete");
             fkNames.add(name);
             FK fk = new FK();
             fk.name = name;
             fk.ref = ref;
+            fk.onUpdate = onUpdate;
+            fk.onDelete = onDelete;
             fks.add(fk);
         }
         List<Column> refColumns = schema.getColumns().stream().filter(Column::isRefKey).collect(Collectors.toList());
@@ -203,12 +216,15 @@ public class MysqlMigration implements Migration {
             if (index >= 0) {
                 // 外键存在
                 FK fk = fks.get(index);
-                if (!column.getRef().getTable().equals(fk.ref)) {
-                    // 外键已指向其他表
-                    // 删除当前外键
-                    session.buildNative().sql("alter table " + schema.getTable() + " drop foreign key " + genFK(schema, column)).update();
-                    // 新建外键
-                    createFK(session, schema, column);
+                boolean change = false;
+                // 外键已指向其他表
+                if (!column.getRef().getTable().equals(fk.ref)) change = true;
+                // onDelete变化
+                if (!equalsCascade(column.getOnDelete(), fk.onDelete)) change = true;
+                // onUpdate变化
+                if (!equalsCascade(column.getOnUpdate(), fk.onUpdate)) change = true;
+                if (change) {
+                    updateFK(session, schema, column);
                 }
             } else {
                 // 外键不存在
@@ -217,8 +233,46 @@ public class MysqlMigration implements Migration {
         }
     }
 
+    /**
+     * 比较级联操作
+     * @param cascade
+     * @param string
+     * @return
+     */
+    private boolean equalsCascade(Cascade cascade, String string) {
+        return cascade == null || cascadeToString(cascade).equals(string);
+    }
+
+    private String cascadeToString(Cascade cascade) {
+        switch (cascade) {
+            case Cascade:
+                return "CASCADE";
+            case SetNull:
+                return "Set NULL";
+            case NoAction:
+                return "NOT ACTION";
+            case Restrict:
+                return "RESTRICT";
+            default:
+                return "RESTRICT";
+        }
+    }
+
+    private void updateFK(Session session, Schema schema, Column column) {
+        // 先删除
+        session.buildNative().sql("alter table " + schema.getTable() + " drop foreign key " + genFK(schema, column)).update();
+        // 再新建
+        createFK(session, schema, column);
+    }
+
     private void createFK(Session session, Schema schema, Column column) {
         String sql = "alter table " + schema.getTable() + " add constraint " + genFK(schema, column) + " foreign key(" + column.getField() + ") REFERENCES " + column.getRef().getTable() + " (" + column.getRef().getIdField() + ")";
+        if (column.getOnDelete() != null) {
+            sql += " on delete " + cascadeToString(column.getOnDelete());
+        }
+        if (column.getOnUpdate() != null) {
+            sql += " on update " + cascadeToString(column.getOnUpdate());
+        }
         session.buildNative().sql(sql).update();
     }
 

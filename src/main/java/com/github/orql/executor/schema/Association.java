@@ -1,5 +1,7 @@
 package com.github.orql.executor.schema;
 
+import com.github.orql.executor.Cascade;
+
 public class Association {
 
     public enum Type {
@@ -26,6 +28,10 @@ public class Association {
     private String middleKey;
 
     private String refMiddleKey;
+
+    private Cascade onUpdate;
+
+    private Cascade onDelete;
 
     public Type getType() {
         return type;
@@ -71,6 +77,22 @@ public class Association {
         return refMiddleKey;
     }
 
+    public Cascade getOnUpdate() {
+        return onUpdate;
+    }
+
+    public void setOnUpdate(Cascade onUpdate) {
+        this.onUpdate = onUpdate;
+    }
+
+    public Cascade getOnDelete() {
+        return onDelete;
+    }
+
+    public void setOnDelete(Cascade onDelete) {
+        this.onDelete = onDelete;
+    }
+
     public static class Builder {
 
         private Association association;
@@ -105,6 +127,16 @@ public class Association {
 
         public Builder refMiddleKey(String refMiddleKey) {
             association.refMiddleKey = refMiddleKey;
+            return this;
+        }
+
+        public Builder onUpdate(Cascade onUpdate) {
+            association.onUpdate = onUpdate;
+            return this;
+        }
+
+        public Builder onDelete(Cascade onDelete) {
+            association.onDelete = onDelete;
             return this;
         }
 

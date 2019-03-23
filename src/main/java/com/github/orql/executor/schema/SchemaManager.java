@@ -111,31 +111,29 @@ public class SchemaManager {
             columnBuilder.field(columnAnnotation.field());
         }
         // data type
-        if (columnAnnotation.dataType() == DataType.Never) {
-            Class<?> type = field.getType();
-            if (type == String.class) {
-                columnBuilder.dataType(DataType.String);
-            } else if (type == Integer.class) {
-                columnBuilder.dataType(DataType.Int);
-            } else if (type == Float.class) {
-                columnBuilder.dataType(DataType.Float);
-            } else if (type == Boolean.class) {
-                columnBuilder.dataType(DataType.Bool);
-            } else if (type == Long.class) {
-                columnBuilder.dataType(DataType.Long);
-            } else if (type == Date.class) {
-                columnBuilder.dataType(DataType.Date);
-            } else if (type.isEnum()) {
-                columnBuilder.dataType(DataType.Enum);
-            } else {
-                try {
-                    throw new TypeNotSupportException(field);
-                } catch (TypeNotSupportException e) {
-                    e.printStackTrace();
-                }
-            }
+        Class<?> type = field.getType();
+        if (type == String.class) {
+            columnBuilder.dataType(DataType.String);
+        } else if (type == Integer.class) {
+            columnBuilder.dataType(DataType.Int);
+        } else if (type == Float.class) {
+            columnBuilder.dataType(DataType.Float);
+        } else if (type == Boolean.class) {
+            columnBuilder.dataType(DataType.Bool);
+        } else if (type == Long.class) {
+            columnBuilder.dataType(DataType.Long);
+        } else if (type == Date.class) {
+            columnBuilder.dataType(DataType.Date);
+        } else if (type.isEnum()) {
+            columnBuilder.dataType(DataType.Enum);
+        } else if (type == Double.class) {
+            columnBuilder.dataType(DataType.Double);
         } else {
-            columnBuilder.dataType(columnAnnotation.dataType());
+            try {
+                throw new TypeNotSupportException(field);
+            } catch (TypeNotSupportException e) {
+                e.printStackTrace();
+            }
         }
         // length
         if (columnAnnotation.length() > 0) {
@@ -159,7 +157,11 @@ public class SchemaManager {
             }
             BelongsTo belongsToAnnotation = field.getAnnotation(BelongsTo.class);
             if (belongsToAnnotation != null) {
-                Association.Builder builder = new Association.Builder(field.getName(), schema, getSchema(field), Association.Type.BelongsTo);
+                Association.Builder builder = new Association.Builder(
+                        field.getName(),
+                        schema,
+                        getSchema(field),
+                        Association.Type.BelongsTo);
                 // ref key
                 if (! belongsToAnnotation.refKey().equals("")) {
                     builder.refKey(belongsToAnnotation.refKey());
@@ -171,33 +173,53 @@ public class SchemaManager {
             }
             HasOne hasOneAnnotation = field.getAnnotation(HasOne.class);
             if (hasOneAnnotation != null) {
-                Association.Builder builder = new Association.Builder(field.getName(), schema, getSchema(field), Association.Type.HasOne);
+                Association.Builder builder = new Association.Builder(
+                        field.getName(),
+                        schema,
+                        getSchema(field),
+                        Association.Type.HasOne);
                 // ref key
                 if (! hasOneAnnotation.refKey().equals("")) {
                     builder.refKey(hasOneAnnotation.refKey());
                 }
                 // required
                 builder.required(hasOneAnnotation.required());
+                // cascade
+                builder.onDelete(hasOneAnnotation.onDelete());
+                builder.onUpdate(hasOneAnnotation.onUpdate());
                 builder.build();
                 continue;
             }
             HasMany hasManyAnnotation = field.getAnnotation(HasMany.class);
             if (hasManyAnnotation != null) {
-                Association.Builder builder = new Association.Builder(field.getName(), schema, getSchema(field), Association.Type.HasMany);
+                Association.Builder builder = new Association.Builder(
+                        field.getName(),
+                        schema,
+                        getSchema(field),
+                        Association.Type.HasMany);
                 // ref key
                 if (! hasManyAnnotation.refKey().equals("")) {
                     builder.refKey(hasManyAnnotation.refKey());
                 }
                 // required
                 builder.required(hasManyAnnotation.required());
+                // cascade
+                builder.onDelete(hasManyAnnotation.onDelete());
+                builder.onUpdate(hasManyAnnotation.onUpdate());
                 builder.build();
                 continue;
             }
             BelongsToMany belongsToManyAnnotation = field.getAnnotation(BelongsToMany.class);
             if (belongsToManyAnnotation != null) {
-                Association.Builder builder = new Association.Builder(field.getName(), schema, getSchema(field), Association.Type.BelongsToMany);
+                Association.Builder builder = new Association.Builder(
+                        field.getName(),
+                        schema,
+                        getSchema(field),
+                        Association.Type.BelongsToMany);
                 // middle
-                builder.middle(belongsToManyAnnotation.middle());
+                Class<?> middleClass = belongsToManyAnnotation.middle();
+                com.github.orql.executor.annotation.Schema middleSchema = middleClass.getAnnotation(com.github.orql.executor.annotation.Schema.class);
+                builder.middle(middleSchema.name());
                 // middle key
                 if (! belongsToManyAnnotation.middleKey().equals("")) {
                     builder.middleKey(belongsToManyAnnotation.middleKey());

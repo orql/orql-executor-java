@@ -30,12 +30,6 @@ public @interface Column {
     int length() default 0;
 
     /**
-     * 数据库类型
-     * @return
-     */
-    DataType dataType() default DataType.Never;
-
-    /**
      * 数据库字段
      * @return
      */

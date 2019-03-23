@@ -146,7 +146,7 @@ public class OrqlToSql {
                     }
                     Schema childSchema = ((ReqlRefItem) child).getRef();
                     Column childIdColumn = childSchema.getIdColumn();
-                    String childPath = currentPath + "_" + child.getName();
+                    String childPath = currentPath + Constants.SqlSplit + child.getName();
                     //入栈
                     queryStack.push(new QueryWrapper((ReqlRefItem) child, childPath));
                     SqlJoinType joinType = association.isRequired() ? SqlJoinType.Inner : SqlJoinType.Left;
@@ -181,7 +181,7 @@ public class OrqlToSql {
                         // postTags.tagId = tag.id
                         Schema targetSchema = association.getCurrent();
                         Schema foreign = association.getRef();
-                        String middlePath = childPath + "_" + association.getMiddle();
+                        String middlePath = childPath + Constants.SqlSplit + association.getMiddle();
                         SqlExp leftOn = new SqlColumnExp(
                                 new SqlColumn(association.getMiddleKey(), middlePath),
                                 ExpOp.Eq,

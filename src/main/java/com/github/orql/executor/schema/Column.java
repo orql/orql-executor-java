@@ -1,5 +1,7 @@
 package com.github.orql.executor.schema;
 
+import com.github.orql.executor.Cascade;
+
 public class Column {
 
     private String name;
@@ -17,6 +19,10 @@ public class Column {
     private boolean generatedKey = false;
 
     private boolean isRefKey = false;
+
+    private Cascade onDelete;
+
+    private Cascade onUpdate;
 
     private Schema ref;
 
@@ -54,6 +60,22 @@ public class Column {
 
     public boolean isRefKey() {
         return isRefKey;
+    }
+
+    public Cascade getOnDelete() {
+        return onDelete;
+    }
+
+    public void setOnDelete(Cascade onDelete) {
+        this.onDelete = onDelete;
+    }
+
+    public Cascade getOnUpdate() {
+        return onUpdate;
+    }
+
+    public void setOnUpdate(Cascade onUpdate) {
+        this.onUpdate = onUpdate;
     }
 
     public static class Builder {
@@ -127,6 +149,16 @@ public class Column {
 
         public Builder ref(Schema ref) {
             column.ref = ref;
+            return this;
+        }
+
+        public Builder onDelete(Cascade onDelete) {
+            column.onDelete = onDelete;
+            return this;
+        }
+
+        public Builder onUpdate(Cascade onUpdate) {
+            column.onUpdate = onUpdate;
             return this;
         }
 

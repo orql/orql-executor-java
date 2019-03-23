@@ -13,7 +13,7 @@ public @interface BelongsToMany {
      * many to many middle table
      * @return
      */
-    String middle();
+    Class<?> middle();
 
     /**
      * current schema field in middle

@@ -1,5 +1,7 @@
 package com.github.orql.executor.schema;
 
+import com.github.orql.executor.Cascade;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,6 +115,10 @@ public class Schema {
      * @return
      */
     public Schema addRefColumn(String field, Schema refSchema) {
+        return addRefColumn(field, refSchema, null, null);
+    }
+
+    public Schema addRefColumn(String field, Schema refSchema, Cascade onDelete, Cascade onUpdate) {
         for (Column column : columns) {
             if (column.getName().equals(field)) {
                 //重复不插入
@@ -125,6 +131,8 @@ public class Schema {
                 .field(field)
                 .dataType(idColumn.getDataType()).isRefKey()
                 .ref(refSchema)
+                .onDelete(onDelete)
+                .onUpdate(onUpdate)
                 .build();
         addColumn(refColumn);
         return this;
@@ -136,12 +144,21 @@ public class Schema {
         switch (association.getType()) {
             case HasOne:
                 //插入外键到ref
-                association.getRef().addRefColumn(association.getRefKey(), association.getRef());
+                association.getRef().addRefColumn(
+                        association.getRefKey(),
+                        association.getRef(),
+                        association.getOnDelete(),
+                        association.getOnUpdate());
                 break;
             case HasMany:
-                association.getRef().addRefColumn(association.getRefKey(), association.getRef());
+                association.getRef().addRefColumn(
+                        association.getRefKey(),
+                        association.getRef(),
+                        association.getOnDelete(),
+                        association.getOnUpdate());
                 break;
             case BelongsTo:
+                // 插入外键到自己
                 addRefColumn(association.getRefKey(), association.getRef());
                 break;
         }

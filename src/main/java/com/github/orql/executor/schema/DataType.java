@@ -4,10 +4,9 @@ public enum DataType {
     Int,
     Float,
     Long,
+    Double,
     String,
     Bool,
     Date,
-    Enum,
-    // 未设置
-    Never
+    Enum
 }

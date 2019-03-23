@@ -1,5 +1,6 @@
 package com.github.orql.executor.mapper;
 
+import com.github.orql.executor.Constants;
 import com.github.orql.executor.orql.OrqlNode.*;
 import com.github.orql.executor.schema.Column;
 import com.github.orql.executor.schema.Schema;
@@ -29,7 +30,7 @@ public class ReqlResult {
                 if (column.isPrivateKey()) {
                     resultId = new ResultId();
                     resultId.setColumn(column.getName());
-                    resultId.setField(path + "_" + column.getField());
+                    resultId.setField(path + Constants.SqlSplit + column.getField());
                     resultId.setType(column.getDataType());
                 } else {
                     ResultColumn resultColumn = new ResultColumn();
@@ -43,13 +44,13 @@ public class ReqlResult {
                 if (((ReqlObjectItem) item).getChildren().isEmpty()) continue;
                 ResultObject resultObject = new ResultObject();
                 resultObject.setColumn(item.getName());
-                resultObject.setRoot(toResult((ReqlObjectItem) item, path + "_" + item.getName(), allColumns));
+                resultObject.setRoot(toResult((ReqlObjectItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
                 columns.add(resultObject);
             } else if (item instanceof ReqlArrayItem) {
                 if (((ReqlArrayItem) item).getChildren().isEmpty()) continue;
                 ResultArray resultArray = new ResultArray();
                 resultArray.setColumn(item.getName());
-                resultArray.setRoot(toResult((ReqlArrayItem) item, path + "_" + item.getName(), allColumns));
+                resultArray.setRoot(toResult((ReqlArrayItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
                 columns.add(resultArray);
             }
         }
