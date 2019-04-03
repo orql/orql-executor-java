@@ -9,24 +9,24 @@ import java.util.List;
 
 public class OrqlNode {
 
-    private ReqlOp op;
+    private OrqlOp op;
 
-    private ReqlRefItem root;
+    private OrqlRefItem root;
 
-    public OrqlNode(ReqlOp op, ReqlRefItem root) {
+    public OrqlNode(OrqlOp op, OrqlRefItem root) {
         this.op = op;
         this.root = root;
     }
 
-    public ReqlOp getOp() {
+    public OrqlOp getOp() {
         return op;
     }
 
-    public ReqlRefItem getRoot() {
+    public OrqlRefItem getRoot() {
         return root;
     }
 
-    public enum ReqlOp {
+    public enum OrqlOp {
         Add("add"),
         Delete("delete"),
         Update("update"),
@@ -39,19 +39,19 @@ public class OrqlNode {
 
         private String name;
 
-        ReqlOp(String name) {
+        OrqlOp(String name) {
             this.name = name;
         }
 
-        public static ReqlOp fromName(String name) {
-            for (ReqlOp op : ReqlOp.values()) {
+        public static OrqlOp fromName(String name) {
+            for (OrqlOp op : OrqlOp.values()) {
                 if (op.name.equals(name)) return op;
             }
             return null;
         }
     }
 
-    public static class ReqlItem {
+    public static class OrqlItem {
 
         private String name;
 
@@ -59,22 +59,22 @@ public class OrqlNode {
             return name;
         }
 
-        public ReqlItem(String name) {
+        public OrqlItem(String name) {
             this.name = name;
         }
     }
 
-    public static class ReqlRefItem extends ReqlItem {
+    public static class OrqlRefItem extends OrqlItem {
 
         private Schema ref;
 
         private Association association;
 
-        private ReqlWhere where;
+        private OrqlWhere where;
 
-        private List<ReqlItem> children;
+        private List<OrqlItem> children;
 
-        public ReqlRefItem(String name, Schema ref, Association association, List<ReqlItem> children, ReqlWhere where) {
+        public OrqlRefItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
             super(name);
             this.ref = ref;
             this.association = association;
@@ -90,34 +90,34 @@ public class OrqlNode {
             return association;
         }
 
-        public ReqlWhere getWhere() {
+        public OrqlWhere getWhere() {
             return where;
         }
 
-        public List<ReqlItem> getChildren() {
+        public List<OrqlItem> getChildren() {
             return children;
         }
     }
 
-    public static class ReqlObjectItem extends ReqlRefItem {
+    public static class OrqlObjectItem extends OrqlRefItem {
 
-        public ReqlObjectItem(String name, Schema ref, Association association, List<ReqlItem> children, ReqlWhere where) {
+        public OrqlObjectItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
             super(name, ref, association, children, where);
         }
     }
 
-    public static class ReqlArrayItem extends ReqlRefItem {
+    public static class OrqlArrayItem extends OrqlRefItem {
 
-        public ReqlArrayItem(String name, Schema ref, Association association, List<ReqlItem> children, ReqlWhere where) {
+        public OrqlArrayItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
             super(name, ref, association, children, where);
         }
     }
 
-    public static class ReqlColumnItem extends ReqlItem {
+    public static class OrqlColumnItem extends OrqlItem {
 
         private Column column;
 
-        public ReqlColumnItem(Column column) {
+        public OrqlColumnItem(Column column) {
             super(column.getName());
             this.column = column;
         }
@@ -128,105 +128,105 @@ public class OrqlNode {
 
     }
 
-    public static class ReqlAllItem extends ReqlItem {
+    public static class OrqlAllItem extends OrqlItem {
 
-        public ReqlAllItem() {
+        public OrqlAllItem() {
             super("");
         }
     }
 
-    public static class ReqlWhere {
+    public static class OrqlWhere {
 
-        private ReqlExp exp;
+        private OrqlExp exp;
 
-        private List<ReqlOrder> orders;
+        private List<OrqlOrder> orders;
 
-        public ReqlWhere(ReqlExp exp, List<ReqlOrder> orders) {
+        public OrqlWhere(OrqlExp exp, List<OrqlOrder> orders) {
             this.exp = exp;
             this.orders = orders;
         }
 
-        public ReqlExp getExp() {
+        public OrqlExp getExp() {
             return exp;
         }
 
-        public List<ReqlOrder> getOrders() {
+        public List<OrqlOrder> getOrders() {
             return orders;
         }
     }
 
-    public static class ReqlExp {
+    public static class OrqlExp {
 
     }
 
-    public static class ReqlNestExp extends ReqlExp {
+    public static class OrqlNestExp extends OrqlExp {
 
-        private ReqlExp exp;
+        private OrqlExp exp;
 
-        public ReqlNestExp(ReqlExp exp) {
+        public OrqlNestExp(OrqlExp exp) {
             this.exp = exp;
         }
 
-        public ReqlExp getExp() {
+        public OrqlExp getExp() {
             return exp;
         }
     }
 
-    public static class ReqlAndExp extends ReqlExp {
+    public static class OrqlAndExp extends OrqlExp {
 
-        private ReqlExp left;
+        private OrqlExp left;
 
-        private ReqlExp right;
+        private OrqlExp right;
 
-        public ReqlAndExp(ReqlExp left, ReqlExp right) {
+        public OrqlAndExp(OrqlExp left, OrqlExp right) {
             this.left = left;
             this.right = right;
         }
 
-        public ReqlExp getLeft() {
+        public OrqlExp getLeft() {
             return left;
         }
 
-        public ReqlExp getRight() {
+        public OrqlExp getRight() {
             return right;
         }
     }
 
-    public static class ReqlOrExp extends ReqlExp {
+    public static class OrqlOrExp extends OrqlExp {
 
-        private ReqlExp left;
+        private OrqlExp left;
 
-        private ReqlExp right;
+        private OrqlExp right;
 
-        public ReqlOrExp(ReqlExp left, ReqlExp right) {
+        public OrqlOrExp(OrqlExp left, OrqlExp right) {
             this.left = left;
             this.right = right;
         }
 
-        public ReqlExp getLeft() {
+        public OrqlExp getLeft() {
             return left;
         }
 
-        public ReqlExp getRight() {
+        public OrqlExp getRight() {
             return right;
         }
 
     }
 
-    public static class ReqlNotExp extends ReqlExp {
+    public static class OrqlNotExp extends OrqlExp {
 
-        private ReqlExp exp;
+        private OrqlExp exp;
 
-        public ReqlExp getExp() {
+        public OrqlExp getExp() {
             return exp;
         }
 
-        public void setExp(ReqlExp exp) {
+        public void setExp(OrqlExp exp) {
             this.exp = exp;
         }
     }
 
-    public static class ReqlColumnExp extends ReqlExp {
+    public static class OrqlColumnExp extends OrqlExp {
 
         private Column left;
 
@@ -238,19 +238,19 @@ public class OrqlNode {
 
         private Object rightValue;
 
-        public ReqlColumnExp(Column left, ExpOp op, Column right) {
+        public OrqlColumnExp(Column left, ExpOp op, Column right) {
             this.left = left;
             this.op = op;
             this.rightColumn = right;
         }
 
-        public ReqlColumnExp(Column left, ExpOp op, String right) {
+        public OrqlColumnExp(Column left, ExpOp op, String right) {
             this.left = left;
             this.op = op;
             this.rightParam = right;
         }
 
-        public ReqlColumnExp(Column left, ExpOp op, Object right) {
+        public OrqlColumnExp(Column left, ExpOp op, Object right) {
             this.left = left;
             this.op = op;
             this.rightValue = right;
@@ -277,7 +277,7 @@ public class OrqlNode {
         }
     }
 
-    public static class ReqlOrder {
+    public static class OrqlOrder {
 
         /**
          * asc
@@ -287,7 +287,7 @@ public class OrqlNode {
 
         private List<Column> columns;
 
-        public ReqlOrder(List<Column> columns, String sort) {
+        public OrqlOrder(List<Column> columns, String sort) {
             this.columns = columns;
             this.sort = sort;
         }

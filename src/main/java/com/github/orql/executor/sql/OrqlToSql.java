@@ -9,36 +9,39 @@ import com.github.orql.executor.sql.SqlNode.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class OrqlToSql {
 
     private Logger logger = LoggerFactory.getLogger(OrqlToSql.class);
 
     private SqlGenerator sqlGenerator = new SqlGenerator();
+    
+    private Map<OrqlRefItem, String> sqlCaches = new HashMap<>();
 
+    /**
+     * 查询包装类
+     */
     private static class QueryWrapper {
-        OrqlNode.ReqlRefItem item;
+        OrqlNode.OrqlRefItem item;
         String path;
-        QueryWrapper(OrqlNode.ReqlRefItem item, String path) {
+        QueryWrapper(OrqlNode.OrqlRefItem item, String path) {
             this.item = item;
             this.path = path;
         }
     }
-
-    public String toAdd(ReqlRefItem root) {
+    
+    public String toAdd(OrqlRefItem root) {
+        if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         List<SqlColumn> columns = new ArrayList<>();
         List<SqlParam> params = new ArrayList<>();
-        for (ReqlItem item : root.getChildren()) {
-            if (item instanceof ReqlColumnItem) {
-                Column columnItem = ((ReqlColumnItem) item).getColumn();
+        for (OrqlItem item : root.getChildren()) {
+            if (item instanceof OrqlColumnItem) {
+                Column columnItem = ((OrqlColumnItem) item).getColumn();
                 columns.add(new SqlColumn(columnItem.getField()));
                 params.add(new SqlParam(columnItem.getName()));
-            } else if (item instanceof ReqlRefItem) {
-                Association association = ((ReqlRefItem) item).getAssociation();
+            } else if (item instanceof OrqlRefItem) {
+                Association association = ((OrqlRefItem) item).getAssociation();
                 switch (association.getType()) {
                     case BelongsTo:
                         columns.add(new SqlColumn(association.getRefKey()));
@@ -48,37 +51,45 @@ public class OrqlToSql {
             }
         }
         SqlInsert insert = new SqlInsert(root.getRef().getTable(), columns, params);
-        return sqlGenerator.gen(insert);
+        String sql = sqlGenerator.gen(insert);
+        sqlCaches.put(root, sql);
+        return sql;
     }
 
-    public String toDelete(ReqlRefItem root) {
+    public String toDelete(OrqlRefItem root) {
+        if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         SqlExp exp = genExp(root.getWhere().getExp(), root.getRef().getTable());
         SqlDelete delete = new SqlDelete(root.getRef().getTable(), exp);
-        return sqlGenerator.gen(delete);
+        String sql = sqlGenerator.gen(delete);
+        sqlCaches.put(root, sql);
+        return sql;
     }
 
-    public String toUpdate(ReqlRefItem root) {
+    public String toUpdate(OrqlRefItem root) {
+        if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         SqlExp exp = genExp(root.getWhere().getExp(), root.getRef().getTable());
         List<SqlColumn> sets = new ArrayList<>();
-        for (ReqlItem item : root.getChildren()) {
-            if (item instanceof ReqlColumnItem) {
-                sets.add(new SqlColumn(((ReqlColumnItem) item).getColumn().getField()));
-            } else if (item instanceof ReqlRefItem) {
-                Association association = ((ReqlRefItem) item).getAssociation();
+        for (OrqlItem item : root.getChildren()) {
+            if (item instanceof OrqlColumnItem) {
+                sets.add(new SqlColumn(((OrqlColumnItem) item).getColumn().getField()));
+            } else if (item instanceof OrqlRefItem) {
+                Association association = ((OrqlRefItem) item).getAssociation();
                 switch (association.getType()) {
                     case BelongsTo:
                         // user belongsTo role
                         // roleId = #role.id
-                        sets.add(new SqlColumn(((ReqlRefItem) item).getAssociation().getRefKey()));
+                        sets.add(new SqlColumn(((OrqlRefItem) item).getAssociation().getRefKey()));
                         break;
                 }
             }
         }
         SqlUpdate update = new SqlUpdate(root.getRef().getTable(), exp, sets);
-        return sqlGenerator.gen(update);
+        String sql = sqlGenerator.gen(update);
+        sqlCaches.put(root, sql);
+        return sql;
     }
 
-    public String toQuery(ReqlOp op, ReqlRefItem root, SqlPage sqlPage) {
+    public String toQuery(OrqlOp op, OrqlRefItem root, SqlPage sqlPage) {
         sqlPage = sqlPage == null ? new SqlPage(null, null) : sqlPage;
         Schema rootSchema = root.getRef();
         String table = rootSchema.getTable();
@@ -98,7 +109,7 @@ public class OrqlToSql {
 
         while (! queryStack.isEmpty()) {
             QueryWrapper queryWrapper = queryStack.pop();
-            ReqlRefItem currentItem = queryWrapper.item;
+            OrqlRefItem currentItem = queryWrapper.item;
             String currentPath = queryWrapper.path;
             Schema currentSchema = currentItem.getRef();
             Column idColumn = currentSchema.getIdColumn();
@@ -118,7 +129,7 @@ public class OrqlToSql {
                 }
                 if (currentItem.getWhere().getOrders() != null) {
                     // 添加排序
-                    for (ReqlOrder reqlOrder : currentItem.getWhere().getOrders()) {
+                    for (OrqlOrder reqlOrder : currentItem.getWhere().getOrders()) {
                         List<SqlColumn> columns = new ArrayList<>();
                         for (Column column : reqlOrder.getColumns()) {
                             columns.add(new SqlColumn(column.getField(), currentPath));
@@ -133,22 +144,22 @@ public class OrqlToSql {
                     }
                 }
             }
-            for (ReqlItem child : currentItem.getChildren()) {
+            for (OrqlItem child : currentItem.getChildren()) {
                 hasSelect = true;
-                if (child instanceof ReqlRefItem) {
+                if (child instanceof OrqlRefItem) {
                     Association association = currentSchema.getAssociation(child.getName());
 
                     if (association.getType() == Association.Type.HasMany || association.getType() == Association.Type.BelongsToMany) {
-                       if (! ((ReqlRefItem) child).getChildren().isEmpty()) {
+                       if (! ((OrqlRefItem) child).getChildren().isEmpty()) {
                            //存在数组类型关联
                            hasArrayRef = true;
                        }
                     }
-                    Schema childSchema = ((ReqlRefItem) child).getRef();
+                    Schema childSchema = ((OrqlRefItem) child).getRef();
                     Column childIdColumn = childSchema.getIdColumn();
                     String childPath = currentPath + Constants.SqlSplit + child.getName();
                     //入栈
-                    queryStack.push(new QueryWrapper((ReqlRefItem) child, childPath));
+                    queryStack.push(new QueryWrapper((OrqlRefItem) child, childPath));
                     SqlJoinType joinType = association.isRequired() ? SqlJoinType.Inner : SqlJoinType.Left;
                     Association.Type type = association.getType();
                     if (type == Association.Type.HasMany) {
@@ -197,9 +208,9 @@ public class OrqlToSql {
                     if (child.getName().equals(idColumn.getName())) {
                         hasId = true;
                     }
-                    if (op != ReqlOp.Count) {
-                        if (child instanceof ReqlColumnItem) {
-                            ReqlColumnItem columnItem = (ReqlColumnItem) child;
+                    if (op != OrqlOp.Count) {
+                        if (child instanceof OrqlColumnItem) {
+                            OrqlColumnItem columnItem = (OrqlColumnItem) child;
                             select.add(new SqlColumn(columnItem.getColumn().getField(), currentPath));
                         } else {
                             select.add(new SqlColumn(child.getName(), currentPath));
@@ -208,7 +219,7 @@ public class OrqlToSql {
                 }
             }
             if (! hasId) {
-                if (op != ReqlOp.Count && hasSelect) {
+                if (op != OrqlOp.Count && hasSelect) {
                     //插入id
                     select.add(new SqlColumn(idColumn.getField(), currentPath));
                 }
@@ -216,7 +227,7 @@ public class OrqlToSql {
         }
         //FIXME 逻辑太乱，后续修复
         SqlQuery query;
-        if (op == ReqlOp.Count) {
+        if (op == OrqlOp.Count) {
             //分页
             select.add(new SqlCountColumn(rootSchema.getIdField(), table));
             if (rootExp != null) where.add(0, rootExp);
@@ -229,7 +240,7 @@ public class OrqlToSql {
             SqlTableForm innerFrom = new SqlTableForm(new SqlTable(table));
             SqlForm from = new SqlInnerFrom(new SqlQuery(innerSelect, innerFrom, innerWhere, new ArrayList<>(), rootOrders, sqlPage));
             query = new SqlQuery(select, from, where, joins, orders,  null);
-        } else if (! hasArrayRef && sqlPage.getLimit() == null && root instanceof ReqlObjectItem) {
+        } else if (! hasArrayRef && sqlPage.getLimit() == null && root instanceof OrqlObjectItem) {
             //无分页，单个查询，而且没有数组类型关联查询
             if (rootExp != null) where.add(0, rootExp);
             SqlForm from = new SqlTableForm(new SqlTable(table, table));
@@ -243,27 +254,27 @@ public class OrqlToSql {
         return sqlGenerator.gen(query);
     }
 
-    private SqlExp genExp(ReqlExp reqlExp, String path) {
-        if (reqlExp instanceof ReqlAndExp) {
+    private SqlExp genExp(OrqlExp reqlExp, String path) {
+        if (reqlExp instanceof OrqlAndExp) {
             return new SqlAndExp(
-                    genExp(((ReqlAndExp) reqlExp).getLeft(), path),
-                    genExp(((ReqlAndExp) reqlExp).getRight(), path));
+                    genExp(((OrqlAndExp) reqlExp).getLeft(), path),
+                    genExp(((OrqlAndExp) reqlExp).getRight(), path));
         }
-        if (reqlExp instanceof ReqlOrExp) {
+        if (reqlExp instanceof OrqlOrExp) {
             return new SqlOrExp(
-                    genExp(((ReqlOrExp) reqlExp).getLeft(), path),
-                    genExp(((ReqlOrExp) reqlExp).getRight(), path));
+                    genExp(((OrqlOrExp) reqlExp).getLeft(), path),
+                    genExp(((OrqlOrExp) reqlExp).getRight(), path));
         }
-        if (reqlExp instanceof ReqlNestExp) {
-            return new SqlNestExp(genExp(((ReqlNestExp) reqlExp).getExp(), path));
+        if (reqlExp instanceof OrqlNestExp) {
+            return new SqlNestExp(genExp(((OrqlNestExp) reqlExp).getExp(), path));
         }
-        if (reqlExp instanceof ReqlColumnExp) {
-            return genExpColumn((ReqlColumnExp) reqlExp, path);
+        if (reqlExp instanceof OrqlColumnExp) {
+            return genExpColumn((OrqlColumnExp) reqlExp, path);
         }
         throw new SqlGenException();
     }
 
-    private SqlExp genExpColumn(ReqlColumnExp reqlColumnExp, String path) {
+    private SqlExp genExpColumn(OrqlColumnExp reqlColumnExp, String path) {
         SqlColumn left = new SqlColumn(reqlColumnExp.getLeft().getField(), path);
         if (reqlColumnExp.getRightColumn() != null) {
             SqlColumn right = new SqlColumn(reqlColumnExp.getRightColumn().getField(), path);
