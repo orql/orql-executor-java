@@ -51,15 +51,15 @@ public class UpdateBuilder {
             }
         }
         if (items.isEmpty()) return;
-        String reql = "add " + schema.getName() + " : {" + items.stream().collect(Collectors.joining(", ")) + "}";
-        add(reql, instance);
+        String orql = "add " + schema.getName() + " : {" + items.stream().collect(Collectors.joining(", ")) + "}";
+        add(orql, instance);
     }
 
-    public void add(String reql, Object instance) {
+    public void add(String orql, Object instance) {
         Map<String, Object> params = MapBean.toMap(instance);
-        Object id = session.add(reql, params);
+        Object id = session.add(orql, params);
         if (id != null) {
-            String schemaName = OrqlUtil.getSchema(reql);
+            String schemaName = OrqlUtil.getSchema(orql);
             Schema schema = schemaManager.getSchema(schemaName);
             Class clazz = schema.getClazz();
             try {
@@ -74,10 +74,10 @@ public class UpdateBuilder {
     }
 
     public void delete(Schema schema, Object id) {
-        String reql = "delete " + schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ")";
+        String orql = "delete " + schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ")";
         Map<String, Object> params = new HashMap<>();
         params.put(schema.getIdName(), id);
-        session.delete(reql, params);
+        session.delete(orql, params);
     }
 
     public void delete(Class clazz, Object id) {
@@ -99,13 +99,13 @@ public class UpdateBuilder {
     }
 
     /**
-     * 使用reql和instance作为params更新
-     * @param reql
+     * 使用orql和instance作为params更新
+     * @param orql
      * @param instance
      */
-    public void update(String reql, Object instance) {
+    public void update(String orql, Object instance) {
         Map<String, Object> params = MapBean.toMap(instance);
-        session.update(reql, params);
+        session.update(orql, params);
     }
 
     /**
@@ -135,8 +135,8 @@ public class UpdateBuilder {
             }
         }
         if (items.isEmpty()) return;
-        String reql = "update " + schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ") : {" + items.stream().collect(Collectors.joining(", ")) + "}";
-        update(reql, instance);
+        String orql = "update " + schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ") : {" + items.stream().collect(Collectors.joining(", ")) + "}";
+        update(orql, instance);
     }
 
 }

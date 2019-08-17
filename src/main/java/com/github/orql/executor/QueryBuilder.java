@@ -20,7 +20,7 @@ public class QueryBuilder {
 
     private Session session;
 
-    private String reql;
+    private String orql;
 
     private Map<String, Object> params = new HashMap<>();
 
@@ -51,8 +51,8 @@ public class QueryBuilder {
         return this;
     }
 
-    public QueryBuilder reql(String reql) {
-        this.reql = reql;
+    public QueryBuilder orql(String orql) {
+        this.orql = orql;
         return this;
     }
 
@@ -71,7 +71,7 @@ public class QueryBuilder {
             offset = (long) (page - 1) * size;
             limit = size;
         }
-        Object result = session.query(reql, params, offset, limit);
+        Object result = session.query(orql, params, offset, limit);
         List<T> list = new ArrayList<>();
         for (Object child : (List) result) {
             list.add((T) MapBean.toBean((Map) child, clazz));
@@ -80,13 +80,13 @@ public class QueryBuilder {
     }
 
     public <T> T queryOne(Class<T> clazz) {
-        Object result = session.query(reql, params, null, null);
+        Object result = session.query(orql, params, null, null);
         if (result == null) return null;
         return (T) MapBean.toBean((Map) result, clazz);
     }
 
     public Long count() {
-        return (Long) session.query(reql, params, null, null);
+        return (Long) session.query(orql, params, null, null);
     }
 
 }

@@ -1,6 +1,6 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.mapper.ReqlResult;
+import com.github.orql.executor.mapper.OrqlResult;
 import com.github.orql.executor.mapper.ResultMapper;
 import com.github.orql.executor.mapper.ResultRoot;
 import com.github.orql.executor.orql.OrqlNode;
@@ -33,7 +33,7 @@ public class DefaultSession implements Session {
 
     protected ResultMapper resultMapper;
 
-    protected ReqlResult reqlResult;
+    protected OrqlResult orqlResult;
 
     protected SchemaManager schemaManager;
 
@@ -43,7 +43,7 @@ public class DefaultSession implements Session {
         this.orqlToSql = configuration.getOrqlToSql();
         this.sqlExecutor = configuration.getSqlExecutor();
         this.parser = configuration.getParser();
-        this.reqlResult = configuration.getReqlResult();
+        this.orqlResult = configuration.getOrqlResult();
         this.resultMapper = configuration.getResultMapper();
         this.schemaManager = configuration.getSchemaManager();
     }
@@ -87,18 +87,18 @@ public class DefaultSession implements Session {
     }
 
     @Override
-    public Object query(String reql, Map<String, Object> params, Long offset, Integer limit) {
+    public Object query(String orql, Map<String, Object> params, Long offset, Integer limit) {
         try {
-            OrqlNode tree = parser.parse(reql);
+            OrqlNode tree = parser.parse(orql);
             SqlNode.SqlPage sqlPage = new SqlNode.SqlPage(offset, limit);
             NamedParamSql namedParamSql = new NamedParamSql(orqlToSql.toQuery(tree.getOp(), tree.getRoot(), sqlPage), params);
             ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
-            if (tree.getOp() == OrqlNode.ReqlOp.Count) {
+            if (tree.getOp() == OrqlNode.OrqlOp.Count) {
                 return resultSet.next() ? resultSet.getLong(1) : 0L;
             }
-            ResultRoot resultRoot = reqlResult.toResult(tree.getRoot());
+            ResultRoot resultRoot = orqlResult.toResult(tree.getRoot());
             List<Map<String, Object>> results = resultMapper.mappe(resultRoot, resultSet);
-            if (tree.getRoot() instanceof OrqlNode.ReqlArrayItem) {
+            if (tree.getRoot() instanceof OrqlNode.OrqlArrayItem) {
                 return results;
             }
             return results.isEmpty() ? null : results.get(0);
@@ -109,12 +109,12 @@ public class DefaultSession implements Session {
     }
 
     @Override
-    public Object add(String reql, Map<String, Object> params) {
-        OrqlNode tree = parser.parse(reql);
+    public Object add(String orql, Map<String, Object> params) {
+        OrqlNode tree = parser.parse(orql);
         return add(tree.getRoot(), params);
     }
 
-    private Object add(OrqlNode.ReqlRefItem root, Map<String, Object> params) {
+    private Object add(OrqlNode.OrqlRefItem root, Map<String, Object> params) {
         try {
             Schema schema = root.getRef();
             for (Association association : schema.getAssociations()) {
@@ -141,10 +141,10 @@ public class DefaultSession implements Session {
     }
 
     @Override
-    public void delete(String reql, Map<String, Object> params) {
+    public void delete(String orql, Map<String, Object> params) {
         try {
-            OrqlNode tree = parser.parse(reql);
-            OrqlNode.ReqlRefItem root = tree.getRoot();
+            OrqlNode tree = parser.parse(orql);
+            OrqlNode.OrqlRefItem root = tree.getRoot();
             NamedParamSql namedParamSql = new NamedParamSql(orqlToSql.toDelete(root), params);
             sqlExecutor.delete(conn, namedParamSql);
         } catch (SQLException e) {
@@ -153,10 +153,10 @@ public class DefaultSession implements Session {
     }
 
     @Override
-    public void update(String reql, Map<String, Object> params) {
+    public void update(String orql, Map<String, Object> params) {
         try {
-            OrqlNode tree = parser.parse(reql);
-            OrqlNode.ReqlRefItem root = tree.getRoot();
+            OrqlNode tree = parser.parse(orql);
+            OrqlNode.OrqlRefItem root = tree.getRoot();
             Schema schema = root.getRef();
             for (Association association : schema.getAssociations()) {
                 String name = association.getName();

@@ -129,12 +129,12 @@ public class OrqlToSql {
                 }
                 if (currentItem.getWhere().getOrders() != null) {
                     // 添加排序
-                    for (OrqlOrder reqlOrder : currentItem.getWhere().getOrders()) {
+                    for (OrqlOrder orqlOrder : currentItem.getWhere().getOrders()) {
                         List<SqlColumn> columns = new ArrayList<>();
-                        for (Column column : reqlOrder.getColumns()) {
+                        for (Column column : orqlOrder.getColumns()) {
                             columns.add(new SqlColumn(column.getField(), currentPath));
                         }
-                        SqlOrder sqlOrder = new SqlOrder(columns, reqlOrder.getSort());
+                        SqlOrder sqlOrder = new SqlOrder(columns, orqlOrder.getSort());
                         // 分开存
                         if (currentPath.equals(table)) {
                             rootOrders.add(sqlOrder);
@@ -254,37 +254,37 @@ public class OrqlToSql {
         return sqlGenerator.gen(query);
     }
 
-    private SqlExp genExp(OrqlExp reqlExp, String path) {
-        if (reqlExp instanceof OrqlAndExp) {
+    private SqlExp genExp(OrqlExp orqlExp, String path) {
+        if (orqlExp instanceof OrqlAndExp) {
             return new SqlAndExp(
-                    genExp(((OrqlAndExp) reqlExp).getLeft(), path),
-                    genExp(((OrqlAndExp) reqlExp).getRight(), path));
+                    genExp(((OrqlAndExp) orqlExp).getLeft(), path),
+                    genExp(((OrqlAndExp) orqlExp).getRight(), path));
         }
-        if (reqlExp instanceof OrqlOrExp) {
+        if (orqlExp instanceof OrqlOrExp) {
             return new SqlOrExp(
-                    genExp(((OrqlOrExp) reqlExp).getLeft(), path),
-                    genExp(((OrqlOrExp) reqlExp).getRight(), path));
+                    genExp(((OrqlOrExp) orqlExp).getLeft(), path),
+                    genExp(((OrqlOrExp) orqlExp).getRight(), path));
         }
-        if (reqlExp instanceof OrqlNestExp) {
-            return new SqlNestExp(genExp(((OrqlNestExp) reqlExp).getExp(), path));
+        if (orqlExp instanceof OrqlNestExp) {
+            return new SqlNestExp(genExp(((OrqlNestExp) orqlExp).getExp(), path));
         }
-        if (reqlExp instanceof OrqlColumnExp) {
-            return genExpColumn((OrqlColumnExp) reqlExp, path);
+        if (orqlExp instanceof OrqlColumnExp) {
+            return genExpColumn((OrqlColumnExp) orqlExp, path);
         }
         throw new SqlGenException();
     }
 
-    private SqlExp genExpColumn(OrqlColumnExp reqlColumnExp, String path) {
-        SqlColumn left = new SqlColumn(reqlColumnExp.getLeft().getField(), path);
-        if (reqlColumnExp.getRightColumn() != null) {
-            SqlColumn right = new SqlColumn(reqlColumnExp.getRightColumn().getField(), path);
-            return new SqlColumnExp(left, reqlColumnExp.getOp(), right);
+    private SqlExp genExpColumn(OrqlColumnExp orqlColumnExp, String path) {
+        SqlColumn left = new SqlColumn(orqlColumnExp.getLeft().getField(), path);
+        if (orqlColumnExp.getRightColumn() != null) {
+            SqlColumn right = new SqlColumn(orqlColumnExp.getRightColumn().getField(), path);
+            return new SqlColumnExp(left, orqlColumnExp.getOp(), right);
         }
-        if (reqlColumnExp.getRightParam() != null) {
-            SqlParam right = new SqlParam(reqlColumnExp.getRightParam());
-            return new SqlColumnExp(left, reqlColumnExp.getOp(), right);
+        if (orqlColumnExp.getRightParam() != null) {
+            SqlParam right = new SqlParam(orqlColumnExp.getRightParam());
+            return new SqlColumnExp(left, orqlColumnExp.getOp(), right);
         }
-        Object right = reqlColumnExp.getRightValue();
-        return new SqlColumnExp(left, reqlColumnExp.getOp(), right);
+        Object right = orqlColumnExp.getRightValue();
+        return new SqlColumnExp(left, orqlColumnExp.getOp(), right);
     }
 }

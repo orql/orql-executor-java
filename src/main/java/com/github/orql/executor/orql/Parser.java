@@ -48,22 +48,22 @@ public class Parser {
         if (caches.containsKey(orql)) return caches.get(orql);
         this.lexer = new Lexer(orql);
         this.token = this.lexer.nextToken();
-        OrqlNode node = visitReql();
+        OrqlNode node = visitOrql();
         caches.put(orql, node);
         return node;
     }
 
-    private OrqlNode visitReql() {
+    private OrqlNode visitOrql() {
         String opStr = matchToken(TokenType.NAME);
-        OrqlNode.ReqlOp op = OrqlNode.ReqlOp.fromName(opStr);
+        OrqlNode.OrqlOp op = OrqlNode.OrqlOp.fromName(opStr);
         return new OrqlNode(op, visitRoot());
     }
 
-    private OrqlNode.ReqlRefItem visitRoot() {
+    private OrqlNode.OrqlRefItem visitRoot() {
         String name = matchToken(TokenType.NAME);
         Schema schema = schemaManager.getSchema(name);
         if (schema == null) throw new SyntaxException("schema " + name + " not exist");
-        OrqlNode.ReqlWhere where = null;
+        OrqlNode.OrqlWhere where = null;
         if (isToken(TokenType.OPEN_PAREN)) {
             // (
             this.walk();
@@ -77,27 +77,27 @@ public class Parser {
             if (isToken(TokenType.OPEN_CURLY)) {
                 // {
                 walk();
-                List<OrqlNode.ReqlItem> items = visitItems(schema);
+                List<OrqlNode.OrqlItem> items = visitItems(schema);
                 // }
                 matchToken(TokenType.CLOSE_CURLY);
-                return new OrqlNode.ReqlObjectItem(name, schema, null, items, where);
+                return new OrqlNode.OrqlObjectItem(name, schema, null, items, where);
             }
             if (isToken(TokenType.OPEN_BRACKET)) {
                 // [
                 walk();
-                List<OrqlNode.ReqlItem> items = visitItems(schema);
+                List<OrqlNode.OrqlItem> items = visitItems(schema);
                 matchToken(TokenType.CLOSE_BRACKET);
-                return new OrqlNode.ReqlArrayItem(name, schema, null, items, where);
+                return new OrqlNode.OrqlArrayItem(name, schema, null, items, where);
             }
         } else if (isToken(TokenType.EOF)) {
             // 避免后续children null异常
-            return new OrqlNode.ReqlObjectItem(name, schema, null, new ArrayList<>(), where);
+            return new OrqlNode.OrqlObjectItem(name, schema, null, new ArrayList<>(), where);
         }
         throw new SyntaxException("miss object or array");
     }
 
-    private List<OrqlNode.ReqlItem> visitItems(Schema schema) {
-        List<OrqlNode.ReqlItem> items = new ArrayList<>();
+    private List<OrqlNode.OrqlItem> visitItems(Schema schema) {
+        List<OrqlNode.OrqlItem> items = new ArrayList<>();
         // * 位置
         Integer allPosition = -1;
         List<String> ignores = new ArrayList<>();
@@ -107,10 +107,10 @@ public class Parser {
                 walk();
                 ignore = true;
             }
-            OrqlNode.ReqlItem item = visitItem(schema);
+            OrqlNode.OrqlItem item = visitItem(schema);
             if (ignore) {
                 ignores.add(item.getName());
-            } else if (item instanceof OrqlNode.ReqlAllItem) {
+            } else if (item instanceof OrqlNode.OrqlAllItem) {
                 allPosition = items.size();
             } else {
                 items.add(item);
@@ -124,7 +124,7 @@ public class Parser {
                 if (ignores.contains(columnName)) continue;
                 Column column = schema.getColumn(columnName);
                 if (column.isRefKey()) continue;
-                OrqlNode.ReqlColumnItem item = new OrqlNode.ReqlColumnItem(column);
+                OrqlNode.OrqlColumnItem item = new OrqlNode.OrqlColumnItem(column);
                 items.add(allPosition ++, item);
 //                items.add(item);
             }
@@ -132,21 +132,21 @@ public class Parser {
         return items;
     }
 
-    private OrqlNode.ReqlItem visitItem(Schema parent) {
+    private OrqlNode.OrqlItem visitItem(Schema parent) {
         if (this.isToken(TokenType.ALL)) {
             this.walk();
-            return new OrqlNode.ReqlAllItem();
+            return new OrqlNode.OrqlAllItem();
         }
         String name = matchToken(TokenType.NAME);
         if (parent.containsColumn(name)) {
             Column column = parent.getColumn(name);
-            return new OrqlNode.ReqlColumnItem(column);
+            return new OrqlNode.OrqlColumnItem(column);
         }
         if (parent.containsAssociation(name)) {
             Association association = parent.getAssociation(name);
             Schema ref = association.getRef();
-            OrqlNode.ReqlWhere where = visitWhere(ref);
-            List<OrqlNode.ReqlItem> items = new ArrayList<>();
+            OrqlNode.OrqlWhere where = visitWhere(ref);
+            List<OrqlNode.OrqlItem> items = new ArrayList<>();
             if (isToken(TokenType.COLON)) {
                 // :
                 walk();
@@ -167,16 +167,16 @@ public class Parser {
                 }
             }
             if (association.getType() == Association.Type.BelongsTo || association.getType() == Association.Type.HasOne) {
-                return new OrqlNode.ReqlObjectItem(name, ref, association, items, where);
+                return new OrqlNode.OrqlObjectItem(name, ref, association, items, where);
             }
-            return new OrqlNode.ReqlArrayItem(name, ref, association, items, where);
+            return new OrqlNode.OrqlArrayItem(name, ref, association, items, where);
         }
         throw new SyntaxException("schema " + parent.getName() + " not exist column " + name);
     }
 
-    private OrqlNode.ReqlWhere visitWhere(Schema schema) {
-        OrqlNode.ReqlExp exp = null;
-        List<OrqlNode.ReqlOrder> orders = null;
+    private OrqlNode.OrqlWhere visitWhere(Schema schema) {
+        OrqlNode.OrqlExp exp = null;
+        List<OrqlNode.OrqlOrder> orders = null;
         if (isToken(TokenType.OPEN_PAREN) || isToken(TokenType.NAME)) {
             // 表达式以(或name开头
             exp = visitExp(schema);
@@ -186,14 +186,14 @@ public class Parser {
             // order
             orders = visitOrders(schema);
         }
-        return new OrqlNode.ReqlWhere(exp, orders);
+        return new OrqlNode.OrqlWhere(exp, orders);
     }
 
     // order a b c, d e f
-    private List<OrqlNode.ReqlOrder> visitOrders(Schema schema) {
-        List<OrqlNode.ReqlOrder> orders = new ArrayList<>();
+    private List<OrqlNode.OrqlOrder> visitOrders(Schema schema) {
+        List<OrqlNode.OrqlOrder> orders = new ArrayList<>();
         while (true) {
-            OrqlNode.ReqlOrder order = visitOrder(schema);
+            OrqlNode.OrqlOrder order = visitOrder(schema);
             orders.add(order);
             // ,
             if (! this.isToken(TokenType.COMMA)) break;
@@ -202,7 +202,7 @@ public class Parser {
         return orders;
     }
 
-    private OrqlNode.ReqlOrder visitOrder(Schema schema) {
+    private OrqlNode.OrqlOrder visitOrder(Schema schema) {
         List<Column> columns = new ArrayList<>();
         String sort = "asc";
         while (true) {
@@ -217,51 +217,51 @@ public class Parser {
             }
             if (! isToken(TokenType.NAME)) break;
         }
-        return new OrqlNode.ReqlOrder(columns, sort);
+        return new OrqlNode.OrqlOrder(columns, sort);
     }
 
-    private OrqlNode.ReqlExp visitExp(Schema schema) {
-        OrqlNode.ReqlExp tmp = visitExpTerm(schema);
+    private OrqlNode.OrqlExp visitExp(Schema schema) {
+        OrqlNode.OrqlExp tmp = visitExpTerm(schema);
         while (isToken(TokenType.OR)) {
             // ||
             this.walk();
-            OrqlNode.ReqlExp exp = visitExp(schema);
-            tmp = new OrqlNode.ReqlOrExp(tmp, exp);
+            OrqlNode.OrqlExp exp = visitExp(schema);
+            tmp = new OrqlNode.OrqlOrExp(tmp, exp);
         }
         return tmp;
     }
 
-    private OrqlNode.ReqlExp visitExpTerm(Schema schema) {
-        OrqlNode.ReqlExp tmp = visitFactor(schema);
+    private OrqlNode.OrqlExp visitExpTerm(Schema schema) {
+        OrqlNode.OrqlExp tmp = visitFactor(schema);
         while (isToken(TokenType.AND)) {
             // &&
             this.walk();
-            OrqlNode.ReqlExp term = visitExpTerm(schema);
-            tmp = new OrqlNode.ReqlAndExp(tmp, term);
+            OrqlNode.OrqlExp term = visitExpTerm(schema);
+            tmp = new OrqlNode.OrqlAndExp(tmp, term);
         }
         return tmp;
     }
 
-    private OrqlNode.ReqlExp visitFactor(Schema schema) {
+    private OrqlNode.OrqlExp visitFactor(Schema schema) {
         if (isToken(TokenType.OPEN_PAREN)) {
             // (
             walk();
-            OrqlNode.ReqlExp exp = visitExp(schema);
+            OrqlNode.OrqlExp exp = visitExp(schema);
             this.matchToken(TokenType.CLOSE_PAREN);
-            return new OrqlNode.ReqlNestExp(exp);
+            return new OrqlNode.OrqlNestExp(exp);
         }
         Column column = visitColumn(schema);
         ExpOp op = visitOp();
         if (isToken(TokenType.NAME)) {
             Column right = visitColumn(schema);
-            return new OrqlNode.ReqlColumnExp(column, op, right);
+            return new OrqlNode.OrqlColumnExp(column, op, right);
         }
         if (isToken(TokenType.PARAM)) {
             String param = matchToken(TokenType.PARAM);
-            return new OrqlNode.ReqlColumnExp(column, op, param);
+            return new OrqlNode.OrqlColumnExp(column, op, param);
         }
         Object value = visitValue();
-        return new OrqlNode.ReqlColumnExp(column, op, value);
+        return new OrqlNode.OrqlColumnExp(column, op, value);
     }
 
     private Object visitValue() {

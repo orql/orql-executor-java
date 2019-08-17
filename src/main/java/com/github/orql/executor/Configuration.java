@@ -1,6 +1,6 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.mapper.ReqlResult;
+import com.github.orql.executor.mapper.OrqlResult;
 import com.github.orql.executor.mapper.ResultMapper;
 import com.github.orql.executor.orql.Parser;
 import com.github.orql.executor.schema.SchemaManager;
@@ -17,7 +17,7 @@ public class Configuration {
     private SqlExecutor sqlExecutor;
 
     /**
-     * reql生成器
+     * orql生成器
      */
     private OrqlToSql orqlToSql;
 
@@ -42,9 +42,9 @@ public class Configuration {
     private ResultMapper resultMapper;
 
     /**
-     * reql映射
+     * orql映射
      */
-    private ReqlResult reqlResult;
+    private OrqlResult orqlResult;
 
     public Configuration() {
         sqlExecutor = new SqlExecutor();
@@ -52,7 +52,7 @@ public class Configuration {
         sqlGenerator = new SqlGenerator();
         schemaManager = new SchemaManager();
         resultMapper = new ResultMapper();
-        reqlResult = new ReqlResult();
+        orqlResult = new OrqlResult();
     }
 
     public SchemaManager getSchemaManager() {
@@ -83,8 +83,8 @@ public class Configuration {
         return resultMapper;
     }
 
-    public ReqlResult getReqlResult() {
-        return reqlResult;
+    public OrqlResult getOrqlResult() {
+        return orqlResult;
     }
 
     public void setDataSource(DataSource dataSource) {
