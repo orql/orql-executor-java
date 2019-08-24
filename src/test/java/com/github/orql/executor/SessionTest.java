@@ -10,14 +10,23 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SessionTest {
 
     private static OrqlExecutor executor = ExecutorInstance.getInstance();
+
+    public static String randomString(int length){
+        String str="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random=new Random();
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i<length; i++){
+            int number=random.nextInt(62);
+            sb.append(str.charAt(number));
+        }
+        return sb.toString();
+    }
+
 
     @BeforeClass
     public static void setUp() throws SQLException {
@@ -32,8 +41,8 @@ public class SessionTest {
     public void testAdd() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
             session.buildUpdate().add(user);
             Assert.assertNotNull(user.getId());
         });
@@ -43,8 +52,8 @@ public class SessionTest {
     public void testQueryOneById() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
             session.buildUpdate().add(user);
 
             User result = session.buildQuery()
@@ -61,8 +70,8 @@ public class SessionTest {
     public void testQueryOneByAnd() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
             session.buildUpdate().add(user);
 
             User result = session.buildQuery()
@@ -79,12 +88,12 @@ public class SessionTest {
     public void testAddBelongsTo() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
             session.buildUpdate().add(user);
 
             UserInfo info = new UserInfo();
-            info.setNo("n1");
+            info.setNo(randomString(8));
             info.setUser(user);
 
             session.buildUpdate().add(info);
@@ -101,11 +110,11 @@ public class SessionTest {
     public void testAddHasOne() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
 
             UserInfo info = new UserInfo();
-            info.setNo("n1");
+            info.setNo(randomString(8));
 
             user.setInfo(info);
 
@@ -124,13 +133,13 @@ public class SessionTest {
     public void testAddHasMany() {
         ExecutorInstance.autoRollback(session -> {
             User user = new User();
-            user.setName("n1");
-            user.setPassword("p1");
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
 
             List<Post> posts = new ArrayList<>();
             for (int i = 0; i < 2; i ++) {
                 Post post = new Post();
-                post.setTitle("t" + i);
+                post.setTitle(randomString(8));
                 posts.add(post);
             }
 
