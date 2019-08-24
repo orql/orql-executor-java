@@ -15,14 +15,6 @@ public enum TokenType {
      */
     CLOSE_CURLY,
     /**
-     * [
-     */
-    OPEN_BRACKET,
-    /**
-     * ]
-     */
-    CLOSE_BRACKET,
-    /**
      * (
      */
     OPEN_PAREN,

@@ -10,10 +10,6 @@ import java.util.Map;
 
 public class QueryBuilder {
 
-    private Integer page;
-
-    private Integer size;
-
     private Long offset;
 
     private Integer limit;
@@ -24,21 +20,13 @@ public class QueryBuilder {
 
     private Map<String, Object> params = new HashMap<>();
 
+    private List<QueryOrder> orders;
+
     private SchemaManager schemaManager;
 
     public QueryBuilder(Session session, SchemaManager schemaManager) {
         this.session = session;
         this.schemaManager = schemaManager;
-    }
-
-    public QueryBuilder page(Integer page) {
-        this.page = page;
-        return this;
-    }
-
-    public QueryBuilder size(Integer size) {
-        this.size = size;
-        return this;
     }
 
     public QueryBuilder offset(Long offset) {
@@ -66,27 +54,42 @@ public class QueryBuilder {
         return this;
     }
 
-    public <T> List<T> queryAll(Class<T> clazz) {
-        if (page != null && size != null) {
-            offset = (long) (page - 1) * size;
-            limit = size;
+    public QueryBuilder order(String[] columns, String sort) {
+        if (this.orders == null) {
+            this.orders = new ArrayList<>();
         }
-        Object result = session.query(orql, params, offset, limit);
-        List<T> list = new ArrayList<>();
-        for (Object child : (List) result) {
-            list.add((T) MapBean.toBean((Map) child, clazz));
+        QueryOrder order = new QueryOrder();
+        for (String column : columns) {
+            order.addColumn(column);
         }
-        return list;
+        order.setSort(sort);
+        return this;
     }
 
-    public <T> T queryOne(Class<T> clazz) {
-        Object result = session.query(orql, params, null, null);
-        if (result == null) return null;
-        return (T) MapBean.toBean((Map) result, clazz);
+    public QueryBuilder order(String[] columns) {
+        return this.order(columns, "asc");
+    }
+
+    public <T> List<T> queryAll() {
+//        if (page != null && size != null) {
+//            offset = (long) (page - 1) * size;
+//            limit = size;
+//        }
+//        Object result = session.query(orql, params, offset, limit, this.orders);
+//        List<T> list = new ArrayList<>();
+//        for (Object child : (List) result) {
+//            list.add((T) MapBean.toBean((Map) child, clazz));
+//        }
+//        return list;
+        return session.queryAll(this.orql, this.params, this.limit, this.offset, this.orders);
+    }
+
+    public <T> T queryOne() {
+       return session.queryOne(this.orql, this.params, this.offset, this.orders);
     }
 
     public Long count() {
-        return (Long) session.query(orql, params, null, null);
+        return (Long) session.count(orql, params);
     }
 
 }

@@ -6,6 +6,7 @@ import com.github.orql.executor.orql.OrqlNode;
 import com.github.orql.executor.orql.OrqlNode.*;
 import com.github.orql.executor.schema.*;
 import com.github.orql.executor.sql.SqlNode.*;
+import com.github.orql.executor.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ public class OrqlToSql {
     private Logger logger = LoggerFactory.getLogger(OrqlToSql.class);
 
     private SqlGenerator sqlGenerator = new SqlGenerator();
-    
+
     private Map<OrqlRefItem, String> sqlCaches = new HashMap<>();
 
     /**
@@ -25,12 +26,13 @@ public class OrqlToSql {
     private static class QueryWrapper {
         OrqlNode.OrqlRefItem item;
         String path;
+
         QueryWrapper(OrqlNode.OrqlRefItem item, String path) {
             this.item = item;
             this.path = path;
         }
     }
-    
+
     public String toAdd(OrqlRefItem root) {
         if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         List<SqlColumn> columns = new ArrayList<>();
@@ -58,7 +60,7 @@ public class OrqlToSql {
 
     public String toDelete(OrqlRefItem root) {
         if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
-        SqlExp exp = genExp(root.getWhere().getExp(), root.getRef().getTable());
+        SqlExp exp = genExp(root.getWhere(), root.getRef().getTable());
         SqlDelete delete = new SqlDelete(root.getRef().getTable(), exp);
         String sql = sqlGenerator.gen(delete);
         sqlCaches.put(root, sql);
@@ -67,7 +69,7 @@ public class OrqlToSql {
 
     public String toUpdate(OrqlRefItem root) {
         if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
-        SqlExp exp = genExp(root.getWhere().getExp(), root.getRef().getTable());
+        SqlExp exp = genExp(root.getWhere(), root.getRef().getTable());
         List<SqlColumn> sets = new ArrayList<>();
         for (OrqlItem item : root.getChildren()) {
             if (item instanceof OrqlColumnItem) {
@@ -89,8 +91,8 @@ public class OrqlToSql {
         return sql;
     }
 
-    public String toQuery(OrqlOp op, OrqlRefItem root, SqlPage sqlPage) {
-        sqlPage = sqlPage == null ? new SqlPage(null, null) : sqlPage;
+    public String toQuery(String op, OrqlRefItem root, Integer limit, Long offset, List<QueryOrder> orders) {
+        SqlPage sqlPage = new SqlPage(offset, limit);
         Schema rootSchema = root.getRef();
         String table = rootSchema.getTable();
         List<SqlJoin> joins = new ArrayList<>();
@@ -99,15 +101,15 @@ public class OrqlToSql {
         SqlExp rootExp = null;
         List<SqlColumn> select = new ArrayList<>();
         // 排序
-        List<SqlOrder> orders = new ArrayList<>();
+        List<SqlOrder> sqlOrders = new ArrayList<>();
         // 根节点排序
-        List<SqlOrder> rootOrders = new ArrayList<>();
+        List<SqlOrder> rootSqlOrders = new ArrayList<>();
         Stack<QueryWrapper> queryStack = new Stack<>();
         queryStack.push(new QueryWrapper(root, table));
         //存在数组类型关联
         boolean hasArrayRef = false;
 
-        while (! queryStack.isEmpty()) {
+        while (!queryStack.isEmpty()) {
             QueryWrapper queryWrapper = queryStack.pop();
             OrqlRefItem currentItem = queryWrapper.item;
             String currentPath = queryWrapper.path;
@@ -118,8 +120,8 @@ public class OrqlToSql {
             // 是否有select
             boolean hasSelect = false;
             if (currentItem.getWhere() != null) {
-                if (currentItem.getWhere().getExp() != null) {
-                    SqlExp exp = genExp(currentItem.getWhere().getExp(), currentPath);
+                if (currentItem.getWhere() != null) {
+                    SqlExp exp = genExp(currentItem.getWhere(), currentPath);
                     if (currentPath.equals(table)) {
                         // root where
                         rootExp = exp;
@@ -127,22 +129,22 @@ public class OrqlToSql {
                         where.add(exp);
                     }
                 }
-                if (currentItem.getWhere().getOrders() != null) {
-                    // 添加排序
-                    for (OrqlOrder orqlOrder : currentItem.getWhere().getOrders()) {
-                        List<SqlColumn> columns = new ArrayList<>();
-                        for (Column column : orqlOrder.getColumns()) {
-                            columns.add(new SqlColumn(column.getField(), currentPath));
-                        }
-                        SqlOrder sqlOrder = new SqlOrder(columns, orqlOrder.getSort());
-                        // 分开存
-                        if (currentPath.equals(table)) {
-                            rootOrders.add(sqlOrder);
-                        }
-                        // 嵌套内外都要order
-                        orders.add(sqlOrder);
-                    }
-                }
+//                if (currentItem.getWhere().getOrders() != null) {
+//                    // 添加排序
+//                    for (OrqlOrder orqlOrder : currentItem.getWhere().getOrders()) {
+//                        List<SqlColumn> columns = new ArrayList<>();
+//                        for (Column column : orqlOrder.getColumns()) {
+//                            columns.add(new SqlColumn(column.getField(), currentPath));
+//                        }
+//                        SqlOrder sqlOrder = new SqlOrder(columns, orqlOrder.getSort());
+//                        // 分开存
+//                        if (currentPath.equals(table)) {
+//                            rootOrders.add(sqlOrder);
+//                        }
+//                        // 嵌套内外都要order
+//                        orders.add(sqlOrder);
+//                    }
+//                }
             }
             for (OrqlItem child : currentItem.getChildren()) {
                 hasSelect = true;
@@ -150,10 +152,10 @@ public class OrqlToSql {
                     Association association = currentSchema.getAssociation(child.getName());
 
                     if (association.getType() == Association.Type.HasMany || association.getType() == Association.Type.BelongsToMany) {
-                       if (! ((OrqlRefItem) child).getChildren().isEmpty()) {
-                           //存在数组类型关联
-                           hasArrayRef = true;
-                       }
+                        if (!((OrqlRefItem) child).getChildren().isEmpty()) {
+                            //存在数组类型关联
+                            hasArrayRef = true;
+                        }
                     }
                     Schema childSchema = ((OrqlRefItem) child).getRef();
                     Column childIdColumn = childSchema.getIdColumn();
@@ -208,7 +210,7 @@ public class OrqlToSql {
                     if (child.getName().equals(idColumn.getName())) {
                         hasId = true;
                     }
-                    if (op != OrqlOp.Count) {
+                    if (!op.equals("count")) {
                         if (child instanceof OrqlColumnItem) {
                             OrqlColumnItem columnItem = (OrqlColumnItem) child;
                             select.add(new SqlColumn(columnItem.getColumn().getField(), currentPath));
@@ -218,38 +220,55 @@ public class OrqlToSql {
                     }
                 }
             }
-            if (! hasId) {
-                if (op != OrqlOp.Count && hasSelect) {
+            if (!hasId) {
+                if (!op.equals("count") && hasSelect) {
                     //插入id
                     select.add(new SqlColumn(idColumn.getField(), currentPath));
                 }
             }
         }
+        if (orders != null) {
+            for (QueryOrder order : orders) {
+                List<SqlColumn> columns = new ArrayList<>();
+                for (String column : order.getColumns()) {
+                    int index = column.lastIndexOf('.');
+                    String currentPath = column.substring(0, index);
+                    // FIXME field
+                    String name = column.substring(index);
+                    columns.add(new SqlColumn(name, currentPath));
+                }
+                SqlOrder sqlOrder = new SqlOrder(columns, order.getSort());
+                sqlOrders.add(sqlOrder);
+                if (Strings.countMatches(order.getColumns().get(0), ".") == 1) {
+                    rootSqlOrders.add(sqlOrder);
+                }
+            }
+        }
         //FIXME 逻辑太乱，后续修复
         SqlQuery query;
-        if (op == OrqlOp.Count) {
+        if (op.equals("count")) {
             //分页
             select.add(new SqlCountColumn(rootSchema.getIdField(), table));
             if (rootExp != null) where.add(0, rootExp);
             SqlForm from = new SqlTableForm(new SqlTable(table, table));
-            query = new SqlQuery(select, from, where, joins, orders, sqlPage);
+            query = new SqlQuery(select, from, where, joins, sqlOrders, sqlPage);
         } else if (hasArrayRef && sqlPage.getLimit() != null) {
             //嵌套分页查询
             List<SqlColumn> innerSelect = Collections.singletonList(new SqlColumn("*"));
             List<SqlExp> innerWhere = rootExp != null ? Collections.singletonList(rootExp) : new ArrayList<>();
             SqlTableForm innerFrom = new SqlTableForm(new SqlTable(table));
-            SqlForm from = new SqlInnerFrom(new SqlQuery(innerSelect, innerFrom, innerWhere, new ArrayList<>(), rootOrders, sqlPage));
-            query = new SqlQuery(select, from, where, joins, orders,  null);
-        } else if (! hasArrayRef && sqlPage.getLimit() == null && root instanceof OrqlObjectItem) {
+            SqlForm from = new SqlInnerFrom(new SqlQuery(innerSelect, innerFrom, innerWhere, new ArrayList<>(), rootSqlOrders, sqlPage));
+            query = new SqlQuery(select, from, where, joins, sqlOrders, null);
+        } else if (!hasArrayRef && sqlPage.getLimit() == null && op.equals("queryOne")) {
             //无分页，单个查询，而且没有数组类型关联查询
             if (rootExp != null) where.add(0, rootExp);
             SqlForm from = new SqlTableForm(new SqlTable(table, table));
             sqlPage = new SqlPage(null, 1);
-            query = new SqlQuery(select, from, where, joins, orders, sqlPage);
+            query = new SqlQuery(select, from, where, joins, sqlOrders, sqlPage);
         } else {
             if (rootExp != null) where.add(0, rootExp);
             SqlForm from = new SqlTableForm(new SqlTable(table, table));
-            query = new SqlQuery(select, from, where, joins, orders, sqlPage);
+            query = new SqlQuery(select, from, where, joins, sqlOrders, sqlPage);
         }
         return sqlGenerator.gen(query);
     }

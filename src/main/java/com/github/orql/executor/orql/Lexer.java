@@ -102,10 +102,6 @@ public class Lexer {
                 return new Token(TokenType.OPEN_PAREN, c);
             case ')':
                 return new Token(TokenType.CLOSE_PAREN, c);
-            case '[':
-                return new Token(TokenType.OPEN_BRACKET, c);
-            case ']':
-                return new Token(TokenType.CLOSE_BRACKET, c);
             case ':':
                 return new Token(TokenType.COLON, c);
             case ',':

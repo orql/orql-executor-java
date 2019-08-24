@@ -9,46 +9,14 @@ import java.util.List;
 
 public class OrqlNode {
 
-    private OrqlOp op;
-
     private OrqlRefItem root;
 
-    public OrqlNode(OrqlOp op, OrqlRefItem root) {
-        this.op = op;
+    public OrqlNode(OrqlRefItem root) {
         this.root = root;
-    }
-
-    public OrqlOp getOp() {
-        return op;
     }
 
     public OrqlRefItem getRoot() {
         return root;
-    }
-
-    public enum OrqlOp {
-        Add("add"),
-        Delete("delete"),
-        Update("update"),
-        Query("query"),
-        Count("count"),
-        Max("max"),
-        Min("min"),
-        Avg("avg"),
-        Group("group");
-
-        private String name;
-
-        OrqlOp(String name) {
-            this.name = name;
-        }
-
-        public static OrqlOp fromName(String name) {
-            for (OrqlOp op : OrqlOp.values()) {
-                if (op.name.equals(name)) return op;
-            }
-            return null;
-        }
     }
 
     public static class OrqlItem {
@@ -70,11 +38,11 @@ public class OrqlNode {
 
         private Association association;
 
-        private OrqlWhere where;
+        private OrqlExp where;
 
         private List<OrqlItem> children;
 
-        public OrqlRefItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
+        public OrqlRefItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlExp where) {
             super(name);
             this.ref = ref;
             this.association = association;
@@ -90,26 +58,17 @@ public class OrqlNode {
             return association;
         }
 
-        public OrqlWhere getWhere() {
+        public OrqlExp getWhere() {
             return where;
         }
 
         public List<OrqlItem> getChildren() {
             return children;
         }
-    }
 
-    public static class OrqlObjectItem extends OrqlRefItem {
-
-        public OrqlObjectItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
-            super(name, ref, association, children, where);
-        }
-    }
-
-    public static class OrqlArrayItem extends OrqlRefItem {
-
-        public OrqlArrayItem(String name, Schema ref, Association association, List<OrqlItem> children, OrqlWhere where) {
-            super(name, ref, association, children, where);
+        public Boolean isArray() {
+            return association.getType() == Association.Type.HasMany
+                    || association.getType() == Association.Type.BelongsToMany;
         }
     }
 
@@ -132,26 +91,6 @@ public class OrqlNode {
 
         public OrqlAllItem() {
             super("");
-        }
-    }
-
-    public static class OrqlWhere {
-
-        private OrqlExp exp;
-
-        private List<OrqlOrder> orders;
-
-        public OrqlWhere(OrqlExp exp, List<OrqlOrder> orders) {
-            this.exp = exp;
-            this.orders = orders;
-        }
-
-        public OrqlExp getExp() {
-            return exp;
-        }
-
-        public List<OrqlOrder> getOrders() {
-            return orders;
         }
     }
 
@@ -213,19 +152,6 @@ public class OrqlNode {
 
     }
 
-    public static class OrqlNotExp extends OrqlExp {
-
-        private OrqlExp exp;
-
-        public OrqlExp getExp() {
-            return exp;
-        }
-
-        public void setExp(OrqlExp exp) {
-            this.exp = exp;
-        }
-    }
-
     public static class OrqlColumnExp extends OrqlExp {
 
         private Column left;
@@ -274,30 +200,6 @@ public class OrqlNode {
 
         public String getRightParam() {
             return rightParam;
-        }
-    }
-
-    public static class OrqlOrder {
-
-        /**
-         * asc
-         * desc
-         */
-        private String sort;
-
-        private List<Column> columns;
-
-        public OrqlOrder(List<Column> columns, String sort) {
-            this.columns = columns;
-            this.sort = sort;
-        }
-
-        public String getSort() {
-            return sort;
-        }
-
-        public List<Column> getColumns() {
-            return columns;
         }
     }
 

@@ -12,10 +12,12 @@ import com.github.orql.executor.sql.NamedParamSql;
 import com.github.orql.executor.sql.OrqlToSql;
 import com.github.orql.executor.sql.SqlGenerator;
 import com.github.orql.executor.sql.SqlNode;
+import com.github.orql.executor.util.MapBean;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -87,25 +89,55 @@ public class DefaultSession implements Session {
     }
 
     @Override
-    public Object query(String orql, Map<String, Object> params, Long offset, Integer limit) {
+    public <T> T queryOne(String orql, Map<String, Object> params, Long offset, List<QueryOrder> orders) {
+        OrqlNode node = parser.parse(orql);
+        String sql = orqlToSql.toQuery("queryOne", node.getRoot(), null, offset, orders);
+        NamedParamSql namedParamSql = new NamedParamSql(sql, params);
         try {
-            OrqlNode tree = parser.parse(orql);
-            SqlNode.SqlPage sqlPage = new SqlNode.SqlPage(offset, limit);
-            NamedParamSql namedParamSql = new NamedParamSql(orqlToSql.toQuery(tree.getOp(), tree.getRoot(), sqlPage), params);
             ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
-            if (tree.getOp() == OrqlNode.OrqlOp.Count) {
-                return resultSet.next() ? resultSet.getLong(1) : 0L;
-            }
-            ResultRoot resultRoot = orqlResult.toResult(tree.getRoot());
+            ResultRoot resultRoot = orqlResult.toResult(node.getRoot());
             List<Map<String, Object>> results = resultMapper.mappe(resultRoot, resultSet);
-            if (tree.getRoot() instanceof OrqlNode.OrqlArrayItem) {
-                return results;
-            }
-            return results.isEmpty() ? null : results.get(0);
+            Class clazz = node.getRoot().getRef().getClazz();
+            return results.isEmpty() ? null : (T) MapBean.toBean(results.get(0), clazz);
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    @Override
+    public <T> List<T> queryAll(String orql, Map<String, Object> params, Integer limit, Long offset, List<QueryOrder> orders) {
+        OrqlNode node = parser.parse(orql);
+        String sql = orqlToSql.toQuery("queryAll", node.getRoot(), limit, offset, orders);
+        NamedParamSql namedParamSql = new NamedParamSql(sql, params);
+        try {
+            ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
+            ResultRoot resultRoot = orqlResult.toResult(node.getRoot());
+            List<Map<String, Object>> results = resultMapper.mappe(resultRoot, resultSet);
+            Class clazz = node.getRoot().getRef().getClazz();
+            List<T> list = new ArrayList<>();
+            for (Map<String, Object> result : results) {
+                list.add((T) MapBean.toBean(result, clazz));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    public long count(String orql, Map<String, Object> params) {
+        OrqlNode node = parser.parse(orql);
+        String sql = orqlToSql.toQuery("count", node.getRoot(), null, null, null);
+        NamedParamSql namedParamSql = new NamedParamSql(sql, params);
+        try {
+            ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
+            return resultSet.next() ? resultSet.getLong(1) : 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     @Override

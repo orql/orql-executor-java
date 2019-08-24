@@ -3,6 +3,7 @@ package com.github.orql.executor;
 import com.github.orql.executor.sql.NamedParamSql;
 
 import java.sql.ResultSet;
+import java.util.List;
 import java.util.Map;
 
 public interface Session {
@@ -15,7 +16,11 @@ public interface Session {
 
     void rollback();
 
-    Object query(String orql, Map<String, Object> params, Long offset, Integer limit);
+    <T> T queryOne(String orql, Map<String, Object> params, Long offset, List<QueryOrder> orders);
+
+    <T> List<T> queryAll(String orql, Map<String, Object> params, Integer limit, Long offset, List<QueryOrder> orders);
+
+    long count(String orql, Map<String, Object> params);
 
     /**
      * hasOne hasMany 先插入上级，然后把上级id赋值到下级外键，然后插入下一级

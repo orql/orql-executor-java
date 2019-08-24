@@ -15,22 +15,19 @@ public class SessionTest {
 
     @BeforeClass
     public static void setUp() throws SQLException {
-//        Migration migration = new MysqlMigration(executor.configuration);
-//        Session session = executor.newSession();
-//        migration.drop(session);
-//        migration.create(session);
+        Migration migration = new MysqlMigration(executor.configuration);
+        Session session = executor.newSession();
+        migration.drop(session);
+        migration.create(session);
+        session.close();
     }
 
     @Test
-    public void testAdd() throws SQLException {
-//        int i = 0;
-        Migration migration = new MysqlMigration(executor.configuration);
-        Session session = executor.newSession();
-        migration.update(session);
-//        ExecutorInstance.autoRollback(session -> {
-//            Map<String, Object> params = new HashMap<>();
-//            session.add("add user : {name, phone}", params);
-//        });
+    public void testAdd() {
+        ExecutorInstance.autoRollback(session -> {
+            Map<String, Object> params = new HashMap<>();
+            session.add("user : {name, phone}", params);
+        });
     }
 
 }

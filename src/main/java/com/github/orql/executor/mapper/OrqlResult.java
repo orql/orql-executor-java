@@ -40,18 +40,19 @@ public class OrqlResult {
                     columns.add(resultColumn);
                     allColumns.add(resultColumn);
                 }
-            } else if (item instanceof OrqlObjectItem) {
-                if (((OrqlObjectItem) item).getChildren().isEmpty()) continue;
-                ResultObject resultObject = new ResultObject();
-                resultObject.setColumn(item.getName());
-                resultObject.setRoot(toResult((OrqlObjectItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
-                columns.add(resultObject);
-            } else if (item instanceof OrqlArrayItem) {
-                if (((OrqlArrayItem) item).getChildren().isEmpty()) continue;
-                ResultArray resultArray = new ResultArray();
-                resultArray.setColumn(item.getName());
-                resultArray.setRoot(toResult((OrqlArrayItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
-                columns.add(resultArray);
+            } else if (item instanceof OrqlRefItem) {
+                if (((OrqlRefItem) item).getChildren().isEmpty()) continue;
+                if (((OrqlRefItem) item).isArray()) {
+                    ResultArray resultArray = new ResultArray();
+                    resultArray.setColumn(item.getName());
+                    resultArray.setRoot(toResult((OrqlRefItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
+                    columns.add(resultArray);
+                } else {
+                    ResultObject resultObject = new ResultObject();
+                    resultObject.setColumn(item.getName());
+                    resultObject.setRoot(toResult((OrqlRefItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
+                    columns.add(resultObject);
+                }
             }
         }
         // 没有id插入id

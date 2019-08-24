@@ -25,4 +25,14 @@ public class Strings {
         return (new StringBuilder()).append(Character.toLowerCase(string.charAt(0))).append(string.substring(1)).toString();
     }
 
+    /**
+     * 判断字符串出现次数
+     * @param str
+     * @param match
+     * @return
+     */
+    public static int countMatches(String str, String match) {
+        return str.length() - str.replace(match, "").length();
+    }
+
 }
