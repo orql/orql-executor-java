@@ -17,12 +17,6 @@ public class Post {
     @Column
     private String title;
 
-    @Column
-    private String content;
-
-    @Column
-    private Date createAt;
-
     @BelongsTo(refKey = "authorId")
     private User author;
 
@@ -43,22 +37,6 @@ public class Post {
 
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public Date getCreateAt() {
-        return createAt;
-    }
-
-    public void setCreateAt(Date createAt) {
-        this.createAt = createAt;
     }
 
     public User getAuthor() {

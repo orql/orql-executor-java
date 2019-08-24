@@ -18,6 +18,9 @@ public class Column {
 
     private boolean generatedKey = false;
 
+    /**
+     * 关联键
+     */
     private boolean isRefKey = false;
 
     private Cascade onDelete;

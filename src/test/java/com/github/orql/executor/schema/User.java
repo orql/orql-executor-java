@@ -1,7 +1,11 @@
 package com.github.orql.executor.schema;
 
 import com.github.orql.executor.annotation.Column;
+import com.github.orql.executor.annotation.HasMany;
+import com.github.orql.executor.annotation.HasOne;
 import com.github.orql.executor.annotation.Schema;
+
+import java.util.List;
 
 @Schema
 public class User {
@@ -13,13 +17,13 @@ public class User {
     private String name;
 
     @Column
-    private String email;
-
-    @Column
-    private String phone;
-
-    @Column
     private String password;
+
+    @HasOne
+    private UserInfo info;
+
+    @HasMany(refKey = "authorId")
+    private List<Post> posts;
 
     public Long getId() {
         return id;
@@ -37,27 +41,27 @@ public class User {
         this.name = name;
     }
 
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
     public String getPassword() {
         return password;
     }
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public UserInfo getInfo() {
+        return info;
+    }
+
+    public void setInfo(UserInfo info) {
+        this.info = info;
+    }
+
+    public List<Post> getPosts() {
+        return posts;
+    }
+
+    public void setPosts(List<Post> posts) {
+        this.posts = posts;
     }
 }

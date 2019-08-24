@@ -51,6 +51,10 @@ public class SchemaManager {
         return null;
     }
 
+    public Schema getSchema(Object instance) {
+        return getSchema(instance.getClass());
+    }
+
     public void scanPackage(String path) {
         Reflections reflections = new Reflections(path);
         List<ReflectWrapper> reflectWrappers = new ArrayList<>();

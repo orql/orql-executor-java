@@ -18,4 +18,21 @@ public class ReflectUtil {
         return (Class<?>)pt.getActualTypeArguments()[0];
     }
 
+    public static void setValue(Object instance, String fieldName, Object value) {
+        try {
+            Field field = instance.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(instance, value);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean hasField(Object instance, String fieldName) {
+        for (Field field : instance.getClass().getDeclaredFields()) {
+            if (field.getName().equals(fieldName)) return true;
+        }
+        return false;
+    }
+
 }

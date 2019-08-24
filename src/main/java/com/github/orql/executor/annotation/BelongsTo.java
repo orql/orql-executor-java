@@ -8,6 +8,8 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface BelongsTo {
+
     String refKey() default "";
+    
     boolean required() default true;
 }

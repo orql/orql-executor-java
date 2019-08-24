@@ -8,8 +8,8 @@ public class OrqlUtil {
     }
 
     public static String getSchema(String orql) {
-        String[] arr = orql.split(" |:", 3);
-        return arr.length == 3 ? arr[1] : null;
+        String[] arr = orql.split(" |:", 2);
+        return arr[0];
     }
 
 }

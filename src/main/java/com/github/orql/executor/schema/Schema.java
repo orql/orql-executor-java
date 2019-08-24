@@ -108,6 +108,13 @@ public class Schema {
         return associations;
     }
 
+    public Association getAssociationByRefKey(String refKey) {
+        for (Association association : associations) {
+            if (association.getRefKey().equals(refKey)) return association;
+        }
+        return null;
+    }
+
     /**
      * 插入关联键
      * @param field
@@ -129,6 +136,7 @@ public class Schema {
         Column refColumn = new Column.Builder()
                 .name(field)
                 .field(field)
+                .isRefKey()
                 .dataType(idColumn.getDataType()).isRefKey()
                 .ref(refSchema)
                 .onDelete(onDelete)
@@ -143,14 +151,8 @@ public class Schema {
         this.associations.add(association);
         switch (association.getType()) {
             case HasOne:
-                //插入外键到ref
-                association.getRef().addRefColumn(
-                        association.getRefKey(),
-                        association.getRef(),
-                        association.getOnDelete(),
-                        association.getOnUpdate());
-                break;
             case HasMany:
+                //插入外键到ref
                 association.getRef().addRefColumn(
                         association.getRefKey(),
                         association.getRef(),
