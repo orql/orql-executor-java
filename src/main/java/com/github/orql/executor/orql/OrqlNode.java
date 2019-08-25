@@ -87,6 +87,13 @@ public class OrqlNode {
 
     }
 
+    public static class OrqlIgnoreItem extends OrqlColumnItem {
+
+        public OrqlIgnoreItem(Column column) {
+            super(column);
+        }
+    }
+
     public static class OrqlAllItem extends OrqlItem {
 
         public OrqlAllItem() {

@@ -30,6 +30,7 @@ public class ExecutorInstance {
         session.beginTransaction();
         executor.execute(session);
         session.rollback();
+        session.close();
     }
 
     public static void transaction(SessionExecutor executor) {

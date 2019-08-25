@@ -5,6 +5,7 @@ import com.github.orql.executor.schema.Association;
 import com.github.orql.executor.schema.Column;
 import com.github.orql.executor.schema.Schema;
 import com.github.orql.executor.schema.SchemaManager;
+import com.github.orql.executor.orql.OrqlNode.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,38 +58,19 @@ public class Parser {
         return new OrqlNode(visitRoot());
     }
 
-    private List<OrqlNode.OrqlItem> visitItems(Schema schema) {
-        List<OrqlNode.OrqlItem> items = new ArrayList<>();
-        // * 位置
-        int allPosition = -1;
-        List<String> ignores = new ArrayList<>();
+    private List<OrqlItem> visitItems(Schema schema) {
+        List<OrqlItem> items = new ArrayList<>();
         while (true) {
             boolean ignore = false;
             if (isToken(TokenType.NOT)) {
                 walk();
                 ignore = true;
             }
-            OrqlNode.OrqlItem item = visitItem(schema);
-            if (ignore) {
-                ignores.add(item.getName());
-            } else if (item instanceof OrqlNode.OrqlAllItem) {
-                allPosition = items.size();
-            } else {
-                items.add(item);
-            }
+            OrqlNode.OrqlItem item = visitItem(schema, ignore);
+            items.add(item);
             // ,
             if (! isToken(TokenType.COMMA)) break;
             this.walk();
-        }
-        if (allPosition >= 0) {
-            for (String columnName: schema.getColumnNames()) {
-                if (ignores.contains(columnName)) continue;
-                Column column = schema.getColumn(columnName);
-                if (column.isRefKey()) continue;
-                OrqlNode.OrqlColumnItem item = new OrqlNode.OrqlColumnItem(column);
-                items.add(allPosition ++, item);
-//                items.add(item);
-            }
         }
         return items;
     }
@@ -114,7 +96,7 @@ public class Parser {
         return new OrqlNode.OrqlRefItem(name, schema, null, items, where);
     }
 
-    private OrqlNode.OrqlItem visitItem(Schema parent) {
+    private OrqlNode.OrqlItem visitItem(Schema parent, boolean ignore) {
         if (this.isToken(TokenType.ALL)) {
             this.walk();
             return new OrqlNode.OrqlAllItem();
@@ -122,7 +104,7 @@ public class Parser {
         String name = matchToken(TokenType.NAME);
         if (parent.containsColumn(name)) {
             Column column = parent.getColumn(name);
-            return new OrqlNode.OrqlColumnItem(column);
+            return ignore ? new OrqlNode.OrqlIgnoreItem(column) : new OrqlNode.OrqlColumnItem(column);
         }
         if (parent.containsAssociation(name)) {
             Association association = parent.getAssociation(name);

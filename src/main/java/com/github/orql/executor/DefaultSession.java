@@ -11,7 +11,6 @@ import com.github.orql.executor.schema.SchemaManager;
 import com.github.orql.executor.sql.NamedParamSql;
 import com.github.orql.executor.sql.OrqlToSql;
 import com.github.orql.executor.sql.SqlGenerator;
-import com.github.orql.executor.sql.SqlNode;
 import com.github.orql.executor.util.MapBean;
 
 import java.sql.Connection;

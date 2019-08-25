@@ -24,8 +24,16 @@ public class OrqlResult {
         ResultRoot resultRoot = new ResultRoot();
         ResultId resultId = null;
         List<Result> columns = new ArrayList<>();
+        boolean selectAll = false;
+        List<String> ignores = null;
         for (OrqlItem item : orqlRoot.getChildren()) {
-            if (item instanceof OrqlColumnItem) {
+            if (item instanceof OrqlAllItem) {
+                selectAll = true;
+                ignores = new ArrayList<>();
+            } else if (item instanceof OrqlIgnoreItem) {
+                // FIXME 可能空指针
+                ignores.add(item.getName());
+            } else if (item instanceof OrqlColumnItem) {
                 Column column = ((OrqlColumnItem) item).getColumn();
                 if (column.isPrivateKey()) {
                     resultId = new ResultId();
@@ -35,7 +43,7 @@ public class OrqlResult {
                 } else {
                     ResultColumn resultColumn = new ResultColumn();
                     resultColumn.setColumn(column.getName());
-                    resultColumn.setField(path + "_" + column.getField());
+                    resultColumn.setField(path + Constants.SqlSplit + column.getField());
                     resultColumn.setType(column.getDataType());
                     columns.add(resultColumn);
                     allColumns.add(resultColumn);
@@ -52,6 +60,25 @@ public class OrqlResult {
                     resultObject.setColumn(item.getName());
                     resultObject.setRoot(toResult((OrqlRefItem) item, path + Constants.SqlSplit + item.getName(), allColumns));
                     columns.add(resultObject);
+                }
+            }
+        }
+        if (selectAll) {
+            for (Column column : orqlRoot.getRef().getColumns()) {
+                if (column.isRefKey()) continue;
+                if (ignores.contains(column.getName())) continue;
+                if (column.isPrivateKey()) {
+                    resultId = new ResultId();
+                    resultId.setColumn(column.getName());
+                    resultId.setField(path + Constants.SqlSplit + column.getField());
+                    resultId.setType(column.getDataType());
+                } else {
+                    ResultColumn resultColumn = new ResultColumn();
+                    resultColumn.setColumn(column.getName());
+                    resultColumn.setField(path + Constants.SqlSplit + column.getField());
+                    resultColumn.setType(column.getDataType());
+                    columns.add(resultColumn);
+                    allColumns.add(resultColumn);
                 }
             }
         }

@@ -37,20 +37,120 @@ public class SessionTest {
         session.close();
     }
 
+    private User createUser(Session session) {
+        User user = new User();
+        user.setName(randomString(8));
+        user.setPassword(randomString(8));
+        session.buildUpdate().add(user);
+        return user;
+    }
+
     @Test
     public void testAdd() {
-        ExecutorInstance.autoRollback(session -> {
-            User user = new User();
-            user.setName(randomString(8));
-            user.setPassword(randomString(8));
-            session.buildUpdate().add(user);
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
             Assert.assertNotNull(user.getId());
         });
     }
 
     @Test
+    public void testQueryAllItem() {
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getId(), user.getId());
+            Assert.assertEquals(result.getName(), user.getName());
+            Assert.assertEquals(result.getPassword(), user.getPassword());
+        });
+    }
+
+    @Test
+    public void testQueryAllItemIgnore() {
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*, !password}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getId(), user.getId());
+            Assert.assertEquals(result.getName(), user.getName());
+            Assert.assertNull(result.getPassword());
+        });
+    }
+
+    @Test
+    public void testAddAll() {
+        ExecutorInstance.transaction(session -> {
+            User user = new User();
+            user.setName(randomString(8));
+            user.setPassword(randomString(8));
+            session.buildUpdate().add("user:{*}", user);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getId(), user.getId());
+            Assert.assertEquals(result.getName(), user.getName());
+            Assert.assertEquals(result.getPassword(), user.getPassword());
+        });
+    }
+
+    @Test
+    public void testUpdate() {
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
+            String newName = randomString(8);
+            user.setName(newName);
+            session.buildUpdate().update(user);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getName(), newName);
+        });
+    }
+
+    @Test
+    public void testUpdateByOrql() {
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
+            String newName = randomString(8);
+            user.setName(newName);
+            session.buildUpdate()
+                    .update("user(id = $id) : {name}", user);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getName(), newName);
+        });
+    }
+
+    @Test
+    public void testUpdateIgnore() {
+        ExecutorInstance.transaction(session -> {
+            User user = createUser(session);
+            String newName = randomString(8);
+            String newPassword = randomString(8);
+            user.setName(newName);
+            user.setPassword(newPassword);
+            session.buildUpdate()
+                    .update("user(id = $id) : {*, !id}", user);
+            User result = session.buildQuery()
+                    .orql("user(id = $id): {*}")
+                    .param("id", user.getId())
+                    .queryOne();
+            Assert.assertEquals(result.getName(), newName);
+            Assert.assertEquals(result.getPassword(), newPassword);
+        });
+    }
+
+    @Test
     public void testQueryOneById() {
-        ExecutorInstance.autoRollback(session -> {
+        ExecutorInstance.transaction(session -> {
             User user = new User();
             user.setName(randomString(8));
             user.setPassword(randomString(8));
@@ -68,7 +168,7 @@ public class SessionTest {
 
     @Test
     public void testQueryOneByAnd() {
-        ExecutorInstance.autoRollback(session -> {
+        ExecutorInstance.transaction(session -> {
             User user = new User();
             user.setName(randomString(8));
             user.setPassword(randomString(8));
@@ -86,7 +186,7 @@ public class SessionTest {
 
     @Test
     public void testAddBelongsTo() {
-        ExecutorInstance.autoRollback(session -> {
+        ExecutorInstance.transaction(session -> {
             User user = new User();
             user.setName(randomString(8));
             user.setPassword(randomString(8));
@@ -108,7 +208,7 @@ public class SessionTest {
 
     @Test
     public void testAddHasOne() {
-        ExecutorInstance.autoRollback(session -> {
+        ExecutorInstance.transaction(session -> {
             User user = new User();
             user.setName(randomString(8));
             user.setPassword(randomString(8));
@@ -131,7 +231,7 @@ public class SessionTest {
 
     @Test
     public void testAddHasMany() {
-        ExecutorInstance.autoRollback(session -> {
+        ExecutorInstance.transaction(session -> {
             User user = new User();
             user.setName(randomString(8));
             user.setPassword(randomString(8));

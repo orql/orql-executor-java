@@ -13,9 +13,15 @@ public class OrqlParserTest {
     }
 
     @Test
-    public void testQuerySimple() {
+    public void testSimple() {
         OrqlNode.OrqlRefItem item = parse("user: {id, name}");
         Assert.assertEquals("user", item.getName());
+    }
+
+    @Test
+    public void testAllItem() {
+        OrqlNode.OrqlRefItem item = parse("user: {*}");
+        Assert.assertTrue(item.getChildren().get(0) instanceof OrqlNode.OrqlAllItem);
     }
 
 }

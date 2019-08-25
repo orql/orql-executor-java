@@ -37,19 +37,33 @@ public class OrqlToSql {
         if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         List<SqlColumn> columns = new ArrayList<>();
         List<SqlParam> params = new ArrayList<>();
+        boolean selectAll = false;
+        List<String> ignores = null;
         for (OrqlItem item : root.getChildren()) {
-            if (item instanceof OrqlColumnItem) {
+            if (item instanceof OrqlAllItem) {
+                selectAll = true;
+                ignores = new ArrayList<>();
+            } else if (item instanceof OrqlIgnoreItem) {
+                // FIXME 可能有空指针异常
+                ignores.add(item.getName());
+            } else if (item instanceof OrqlColumnItem) {
                 Column columnItem = ((OrqlColumnItem) item).getColumn();
                 columns.add(new SqlColumn(columnItem.getField()));
                 params.add(new SqlParam(columnItem.getName()));
             } else if (item instanceof OrqlRefItem) {
                 Association association = ((OrqlRefItem) item).getAssociation();
-                switch (association.getType()) {
-                    case BelongsTo:
-                        columns.add(new SqlColumn(association.getRefKey()));
-                        params.add(new SqlParam(association.getRefKey()));
-                        break;
+                if (association.getType() == Association.Type.BelongsTo) {
+                    columns.add(new SqlColumn(association.getRefKey()));
+                    params.add(new SqlParam(association.getRefKey()));
                 }
+            }
+        }
+        if (selectAll) {
+            for (Column column : root.getRef().getColumns()) {
+                if (column.isRefKey()) continue;
+                if (ignores.contains(column.getName())) continue;
+                columns.add(new SqlColumn(column.getField()));
+                params.add(new SqlParam(column.getName()));
             }
         }
         SqlInsert insert = new SqlInsert(root.getRef().getTable(), columns, params);
@@ -71,8 +85,16 @@ public class OrqlToSql {
         if (sqlCaches.containsKey(root)) return sqlCaches.get(root);
         SqlExp exp = genExp(root.getWhere(), root.getRef().getTable());
         List<SqlColumn> sets = new ArrayList<>();
+        boolean selectAll = false;
+        List<String> ignores = null;
         for (OrqlItem item : root.getChildren()) {
-            if (item instanceof OrqlColumnItem) {
+            if (item instanceof OrqlAllItem) {
+                selectAll = true;
+                ignores = new ArrayList<>();
+            } else if (item instanceof OrqlIgnoreItem) {
+                // FIXME 可能有空指针异常
+                ignores.add(item.getName());
+            } else if (item instanceof OrqlColumnItem) {
                 sets.add(new SqlColumn(((OrqlColumnItem) item).getColumn().getField()));
             } else if (item instanceof OrqlRefItem) {
                 Association association = ((OrqlRefItem) item).getAssociation();
@@ -83,6 +105,13 @@ public class OrqlToSql {
                         sets.add(new SqlColumn(((OrqlRefItem) item).getAssociation().getRefKey()));
                         break;
                 }
+            }
+        }
+        if (selectAll) {
+            for (Column column : root.getRef().getColumns()) {
+                if (column.isRefKey()) continue;
+                if (ignores.contains(column.getName())) continue;
+                sets.add(new SqlColumn(column.getField()));
             }
         }
         SqlUpdate update = new SqlUpdate(root.getRef().getTable(), exp, sets);
@@ -119,6 +148,10 @@ public class OrqlToSql {
             boolean hasId = false;
             // 是否有select
             boolean hasSelect = false;
+            // 选择全部
+            boolean selectAll = false;
+            // 忽略
+            List<String> ignores = null;
             if (currentItem.getWhere() != null) {
                 if (currentItem.getWhere() != null) {
                     SqlExp exp = genExp(currentItem.getWhere(), currentPath);
@@ -129,22 +162,6 @@ public class OrqlToSql {
                         where.add(exp);
                     }
                 }
-//                if (currentItem.getWhere().getOrders() != null) {
-//                    // 添加排序
-//                    for (OrqlOrder orqlOrder : currentItem.getWhere().getOrders()) {
-//                        List<SqlColumn> columns = new ArrayList<>();
-//                        for (Column column : orqlOrder.getColumns()) {
-//                            columns.add(new SqlColumn(column.getField(), currentPath));
-//                        }
-//                        SqlOrder sqlOrder = new SqlOrder(columns, orqlOrder.getSort());
-//                        // 分开存
-//                        if (currentPath.equals(table)) {
-//                            rootOrders.add(sqlOrder);
-//                        }
-//                        // 嵌套内外都要order
-//                        orders.add(sqlOrder);
-//                    }
-//                }
             }
             for (OrqlItem child : currentItem.getChildren()) {
                 hasSelect = true;
@@ -206,6 +223,12 @@ public class OrqlToSql {
                                 new SqlColumn(association.getRefMiddleKey(), middlePath));
                         joins.add(new SqlJoin(foreign.getTable(), childPath, joinType, rightOn));
                     }
+                } else if (child instanceof OrqlNode.OrqlAllItem) {
+                    selectAll = true;
+                    ignores = new ArrayList<>();
+                } else if (child instanceof OrqlIgnoreItem) {
+                    // FIXME 可能会有空指针异常
+                    ignores.add(child.getName());
                 } else {
                     if (child.getName().equals(idColumn.getName())) {
                         hasId = true;
@@ -218,6 +241,14 @@ public class OrqlToSql {
                             select.add(new SqlColumn(child.getName(), currentPath));
                         }
                     }
+                }
+            }
+            if (selectAll) {
+                for (Column column : currentSchema.getColumns()) {
+                    if (column.isRefKey()) continue;
+                    if (ignores.contains(column.getName())) continue;
+                    if (column.isPrivateKey()) hasId = true;
+                    select.add(new SqlColumn(column.getField(), currentPath));
                 }
             }
             if (!hasId) {
