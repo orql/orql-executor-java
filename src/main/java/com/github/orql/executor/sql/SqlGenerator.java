@@ -99,8 +99,10 @@ public class SqlGenerator {
             }
             // 删掉最后一个,
             builder.setCharAt(builder.length() - 2, ' ');
-            builder.append(order.getSort());
+            builder.append(order.getSort()).append(", ");
         }
+        // 删掉最后一个,
+        builder.setCharAt(builder.length() - 2, ' ');
         return builder.toString();
     }
 
