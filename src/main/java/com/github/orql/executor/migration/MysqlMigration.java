@@ -1,12 +1,12 @@
 package com.github.orql.executor.migration;
 
-import com.github.orql.executor.Cascade;
+import com.github.orql.core.Cascade;
+import com.github.orql.core.schema.ColumnInfo;
+import com.github.orql.core.schema.DataType;
+import com.github.orql.core.schema.SchemaInfo;
+import com.github.orql.core.schema.SchemaManager;
 import com.github.orql.executor.Configuration;
 import com.github.orql.executor.Session;
-import com.github.orql.executor.schema.Column;
-import com.github.orql.executor.schema.DataType;
-import com.github.orql.executor.schema.Schema;
-import com.github.orql.executor.schema.SchemaManager;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,6 +17,8 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.github.orql.core.schema.DataType.Int;
 
 public class MysqlMigration implements Migration {
 
@@ -47,10 +49,10 @@ public class MysqlMigration implements Migration {
     @Override
     public void create(Session session) throws SQLException {
         SchemaManager schemaManager = configuration.getSchemaManager();
-        for (Map.Entry<String, Schema> entry : schemaManager.getSchemas().entrySet()) {
+        for (Map.Entry<String, SchemaInfo> entry : schemaManager.getSchemas().entrySet()) {
             createTable(session, entry.getValue());
         }
-        for (Map.Entry<String, Schema> entry : schemaManager.getSchemas().entrySet()) {
+        for (Map.Entry<String, SchemaInfo> entry : schemaManager.getSchemas().entrySet()) {
             updateFks(session, entry.getValue());
         }
     }
@@ -58,8 +60,8 @@ public class MysqlMigration implements Migration {
     @Override
     public void update(Session session) throws SQLException {
         SchemaManager schemaManager = configuration.getSchemaManager();
-        for (Map.Entry<String, Schema> entry: schemaManager.getSchemas().entrySet()) {
-            Schema schema = entry.getValue();
+        for (Map.Entry<String, SchemaInfo> entry: schemaManager.getSchemas().entrySet()) {
+            SchemaInfo schema = entry.getValue();
             Boolean exist = existTable(session, schema);
             if (!exist) {
                 createTable(session, schema);
@@ -86,7 +88,7 @@ public class MysqlMigration implements Migration {
                 fields.add(field);
                 fieldNames.add(field.name);
             }
-            for (Column column: schema.getColumns()) {
+            for (ColumnInfo column: schema.getColumns()) {
                 int index = fieldNames.indexOf(column.getField());
                 if (index >= 0) {
                     boolean change = false;
@@ -111,7 +113,7 @@ public class MysqlMigration implements Migration {
                 }
             }
         }
-        for (Map.Entry<String, Schema> entry : schemaManager.getSchemas().entrySet()) {
+        for (Map.Entry<String, SchemaInfo> entry : schemaManager.getSchemas().entrySet()) {
             updateFks(session, entry.getValue());
         }
     }
@@ -120,7 +122,7 @@ public class MysqlMigration implements Migration {
     public void drop(Session session) throws SQLException {
         SchemaManager schemaManager = configuration.getSchemaManager();
         session.buildNative().sql("set foreign_key_checks = 0").update();
-        for (Map.Entry<String, Schema> entry: schemaManager.getSchemas().entrySet()) {
+        for (Map.Entry<String, SchemaInfo> entry: schemaManager.getSchemas().entrySet()) {
             boolean exist = existTable(session, entry.getValue());
             if (exist) {
                 String dropSql = "drop table " + entry.getValue().getTable();
@@ -130,7 +132,7 @@ public class MysqlMigration implements Migration {
         session.buildNative().sql("set foreign_key_checks = 1").update();
     }
 
-    private void createTable(Session session, Schema schema) {
+    private void createTable(Session session, SchemaInfo schema) {
         String sql = "create table if not exists " +
                 schema.getTable() + " (" +
                 schema.getColumns().stream().map(this::genCreateColumn).collect(Collectors.joining(", ")) +
@@ -138,7 +140,7 @@ public class MysqlMigration implements Migration {
         session.buildNative().sql(sql).update();
     }
 
-    private String genCreateColumn(Column column) {
+    private String genCreateColumn(ColumnInfo column) {
         String sql = column.getField() + " " + genColumnType(column);
         if (column.getDataType() == DataType.String) {
             if (column.getLength() == null) {
@@ -151,7 +153,7 @@ public class MysqlMigration implements Migration {
         return sql;
     }
 
-    private String genColumnType(Column column) {
+    private String genColumnType(ColumnInfo column) {
         String type = "";
         if (column.getDataType() == null) {
             type = "";
@@ -184,7 +186,7 @@ public class MysqlMigration implements Migration {
         }
         return column.getLength() != null && column.getLength() > 0 ? (type + "(" + column.getLength() + ")") : type;
     }
-    private void updateFks(Session session, Schema schema) throws SQLException {
+    private void updateFks(Session session, SchemaInfo schema) throws SQLException {
         String queryFKSql = "select " +
                 "u.COLUMN_NAME as name, " +
                 "u.REFERENCED_TABLE_NAME as ref, " +
@@ -210,8 +212,8 @@ public class MysqlMigration implements Migration {
             fk.onDelete = onDelete;
             fks.add(fk);
         }
-        List<Column> refColumns = schema.getColumns().stream().filter(Column::isRefKey).collect(Collectors.toList());
-        for (Column column: refColumns) {
+        List<ColumnInfo> refColumns = schema.getColumns().stream().filter(ColumnInfo::isRefKey).collect(Collectors.toList());
+        for (ColumnInfo column: refColumns) {
             int index = fkNames.indexOf(column.getField());
             if (index >= 0) {
                 // 外键存在
@@ -258,14 +260,14 @@ public class MysqlMigration implements Migration {
         }
     }
 
-    private void updateFK(Session session, Schema schema, Column column) {
+    private void updateFK(Session session, SchemaInfo schema, ColumnInfo column) {
         // 先删除
         session.buildNative().sql("alter table " + schema.getTable() + " drop foreign key " + genFK(schema, column)).update();
         // 再新建
         createFK(session, schema, column);
     }
 
-    private void createFK(Session session, Schema schema, Column column) {
+    private void createFK(Session session, SchemaInfo schema, ColumnInfo column) {
         String sql = "alter table " + schema.getTable() + " add constraint " + genFK(schema, column) + " foreign key(" + column.getField() + ") REFERENCES " + column.getRef().getTable() + " (" + column.getRef().getIdField() + ")";
         if (column.getOnDelete() != null) {
             sql += " on delete " + cascadeToString(column.getOnDelete());
@@ -276,11 +278,11 @@ public class MysqlMigration implements Migration {
         session.buildNative().sql(sql).update();
     }
 
-    private String genFK(Schema schema, Column column) {
+    private String genFK(SchemaInfo schema, ColumnInfo column) {
         return "fk_" + schema.getTable() + "_" + column.getField();
     }
 
-    private Boolean existTable(Session session, Schema schema) throws SQLException {
+    private Boolean existTable(Session session, SchemaInfo schema) throws SQLException {
         String sql = "show tables like '" + schema.getTable() + "'";
         ResultSet resultSet = session.buildNative().sql(sql).query();
         while (resultSet.next()) {

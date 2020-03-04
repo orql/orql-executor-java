@@ -1,11 +1,11 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.mapper.OrqlResult;
-import com.github.orql.executor.mapper.ResultMapper;
-import com.github.orql.executor.orql.Parser;
-import com.github.orql.executor.schema.SchemaManager;
-import com.github.orql.executor.sql.OrqlToSql;
-import com.github.orql.executor.sql.SqlGenerator;
+import com.github.orql.core.mapper.OrqlResult;
+import com.github.orql.core.mapper.ResultMapper;
+import com.github.orql.core.orql.Parser;
+import com.github.orql.core.schema.SchemaManager;
+import com.github.orql.core.sql.OrqlToSql;
+import com.github.orql.core.sql.SqlGenerator;
 
 import javax.sql.DataSource;
 

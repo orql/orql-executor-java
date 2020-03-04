@@ -1,7 +1,7 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.schema.SchemaManager;
-import com.github.orql.executor.util.MapBean;
+import com.github.orql.core.QueryOrder;
+import com.github.orql.core.schema.SchemaManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;

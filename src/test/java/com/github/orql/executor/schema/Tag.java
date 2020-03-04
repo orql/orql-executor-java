@@ -1,8 +1,6 @@
 package com.github.orql.executor.schema;
 
-import com.github.orql.executor.annotation.BelongsToMany;
-import com.github.orql.executor.annotation.Column;
-import com.github.orql.executor.annotation.Schema;
+import com.github.orql.core.annotation.*;
 
 import java.util.List;
 

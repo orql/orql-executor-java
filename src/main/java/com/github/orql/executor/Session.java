@@ -1,6 +1,7 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.sql.NamedParamSql;
+import com.github.orql.core.QueryOrder;
+import com.github.orql.core.sql.NamedParamSql;
 
 import java.sql.ResultSet;
 import java.util.List;

@@ -1,9 +1,8 @@
 package com.github.orql.executor;
 
-import com.github.orql.executor.schema.Association;
-import com.github.orql.executor.schema.Column;
-import com.github.orql.executor.schema.Schema;
-import com.github.orql.executor.schema.SchemaManager;
+import com.github.orql.core.schema.Association;
+import com.github.orql.core.schema.SchemaInfo;
+import com.github.orql.core.schema.SchemaManager;
 import com.github.orql.executor.util.MapBean;
 import com.github.orql.executor.util.OrqlUtil;
 import com.github.orql.executor.util.ReflectUtil;
@@ -28,7 +27,7 @@ public class UpdateBuilder {
 
     public List<String> getOrqlItems(Object instance) {
         Class clazz = instance.getClass();
-        Schema schema = schemaManager.getSchema(clazz);
+        SchemaInfo schema = schemaManager.getSchema(clazz);
         Field[] fields = clazz.getDeclaredFields();
         String idName = schema.getIdName();
         List<String> items = new ArrayList<>();
@@ -60,7 +59,7 @@ public class UpdateBuilder {
      */
     public void add(Object instance) {
         // FIXME belongsToMany插入未实现
-        Schema schema = schemaManager.getSchema(instance.getClass());
+        SchemaInfo schema = schemaManager.getSchema(instance.getClass());
         Field[] fields = instance.getClass().getDeclaredFields();
         // 后续执行的
         List<Object> postAddList = new ArrayList<>();
@@ -116,7 +115,7 @@ public class UpdateBuilder {
         Object id = session.add(orql, params);
         if (id != null) {
             String schemaName = OrqlUtil.getSchema(orql);
-            Schema schema = schemaManager.getSchema(schemaName);
+            SchemaInfo schema = schemaManager.getSchema(schemaName);
             Class clazz = schema.getClazz();
             try {
                 Field idField = clazz.getDeclaredField(schema.getIdName());
@@ -129,7 +128,7 @@ public class UpdateBuilder {
         }
     }
 
-    public void delete(Schema schema, Object id) {
+    public void delete(SchemaInfo schema, Object id) {
         String orql = "delete " + schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ")";
         Map<String, Object> params = new HashMap<>();
         params.put(schema.getIdName(), id);
@@ -137,14 +136,14 @@ public class UpdateBuilder {
     }
 
     public void delete(Class clazz, Object id) {
-        Schema schema = schemaManager.getSchema(clazz);
+        SchemaInfo schema = schemaManager.getSchema(clazz);
         delete(schema, id);
     }
 
     public void delete(Object instance) {
         try {
             Class clazz = instance.getClass();
-            Schema schema = schemaManager.getSchema(clazz);
+            SchemaInfo schema = schemaManager.getSchema(clazz);
             Field field = clazz.getDeclaredField(schema.getIdName());
             field.setAccessible(true);
             Object id = field.get(instance);
@@ -169,7 +168,7 @@ public class UpdateBuilder {
      * @param instance
      */
     public void update(Object instance) {
-        Schema schema = schemaManager.getSchema(instance);
+        SchemaInfo schema = schemaManager.getSchema(instance);
         List<String> items = getOrqlItems(instance);
         if (items.isEmpty()) return;
         String orql = schema.getName() + "(" + schema.getIdName() + " = #" + schema.getIdName() + ") : {" + items.stream().collect(Collectors.joining(", ")) + "}";
