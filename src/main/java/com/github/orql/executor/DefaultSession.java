@@ -2,16 +2,16 @@ package com.github.orql.executor;
 
 import com.github.orql.core.QueryOrder;
 import com.github.orql.core.orql.OrqlNode;
-import com.github.orql.core.orql.Parser;
-import com.github.orql.core.schema.Association;
+import com.github.orql.core.orql.OrqlParser;
+import com.github.orql.core.schema.AssociationInfo;
 import com.github.orql.core.schema.SchemaInfo;
 import com.github.orql.core.schema.SchemaManager;
 import com.github.orql.core.sql.NamedParamSql;
 import com.github.orql.core.sql.OrqlToSql;
 import com.github.orql.core.sql.SqlGenerator;
-import com.github.orql.core.mapper.OrqlResult;
-import com.github.orql.core.mapper.ResultMapper;
-import com.github.orql.core.mapper.ResultRoot;
+import com.github.orql.executor.mapper.OrqlResultGen;
+import com.github.orql.executor.mapper.ResultMapper;
+import com.github.orql.executor.mapper.ResultRoot;
 import com.github.orql.executor.util.MapBean;
 
 import java.sql.Connection;
@@ -31,11 +31,11 @@ public class DefaultSession implements Session {
 
     protected SqlExecutor sqlExecutor;
 
-    protected Parser parser;
+    protected OrqlParser orqlParser;
 
     protected ResultMapper resultMapper;
 
-    protected OrqlResult orqlResult;
+    protected OrqlResultGen orqlResultGen;
 
     protected SchemaManager schemaManager;
 
@@ -44,8 +44,8 @@ public class DefaultSession implements Session {
         this.sqlGenerator = configuration.getSqlGenerator();
         this.orqlToSql = configuration.getOrqlToSql();
         this.sqlExecutor = configuration.getSqlExecutor();
-        this.parser = configuration.getParser();
-        this.orqlResult = configuration.getOrqlResult();
+        this.orqlParser = configuration.getOrqlParser();
+        this.orqlResultGen = configuration.getOrqlResultGen();
         this.resultMapper = configuration.getResultMapper();
         this.schemaManager = configuration.getSchemaManager();
     }
@@ -90,12 +90,12 @@ public class DefaultSession implements Session {
 
     @Override
     public <T> T queryOne(String orql, Map<String, Object> params, Long offset, List<QueryOrder> orders) {
-        OrqlNode node = parser.parse(orql);
-        String sql = orqlToSql.toQuery("queryOne", node.getRoot(), null, offset, orders);
+        OrqlNode node = orqlParser.parse(orql);
+        String sql = orqlToSql.toQuery("queryOne", node.getRoot(), false, orders);
         NamedParamSql namedParamSql = new NamedParamSql(sql, params);
         try {
             ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
-            ResultRoot resultRoot = orqlResult.toResult(node.getRoot());
+            ResultRoot resultRoot = orqlResultGen.toResult(node.getRoot());
             List<Map<String, Object>> results = resultMapper.mappe(resultRoot, resultSet);
             Class clazz = node.getRoot().getRef().getClazz();
             return results.isEmpty() ? null : (T) MapBean.toBean(results.get(0), clazz);
@@ -107,12 +107,14 @@ public class DefaultSession implements Session {
 
     @Override
     public <T> List<T> queryAll(String orql, Map<String, Object> params, Integer limit, Long offset, List<QueryOrder> orders) {
-        OrqlNode node = parser.parse(orql);
-        String sql = orqlToSql.toQuery("queryAll", node.getRoot(), limit, offset, orders);
+        OrqlNode node = orqlParser.parse(orql);
+        String sql = orqlToSql.toQuery("queryAll", node.getRoot(), true, orders);
+        params.put("limit", limit);
+        params.put("offset", offset);
         NamedParamSql namedParamSql = new NamedParamSql(sql, params);
         try {
             ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
-            ResultRoot resultRoot = orqlResult.toResult(node.getRoot());
+            ResultRoot resultRoot = orqlResultGen.toResult(node.getRoot());
             List<Map<String, Object>> results = resultMapper.mappe(resultRoot, resultSet);
             Class clazz = node.getRoot().getRef().getClazz();
             List<T> list = new ArrayList<>();
@@ -128,8 +130,8 @@ public class DefaultSession implements Session {
 
     @Override
     public long count(String orql, Map<String, Object> params) {
-        OrqlNode node = parser.parse(orql);
-        String sql = orqlToSql.toQuery("count", node.getRoot(), null, null, null);
+        OrqlNode node = orqlParser.parse(orql);
+        String sql = orqlToSql.toQuery("count", node.getRoot(), false, null);
         NamedParamSql namedParamSql = new NamedParamSql(sql, params);
         try {
             ResultSet resultSet = sqlExecutor.query(conn, namedParamSql);
@@ -142,18 +144,18 @@ public class DefaultSession implements Session {
 
     @Override
     public Object add(String orql, Map<String, Object> params) {
-        OrqlNode tree = parser.parse(orql);
+        OrqlNode tree = orqlParser.parse(orql);
         return add(tree.getRoot(), params);
     }
 
     private Object add(OrqlNode.OrqlRefItem root, Map<String, Object> params) {
         try {
             SchemaInfo schema = root.getRef();
-            for (Association association : schema.getAssociations()) {
+            for (AssociationInfo association : schema.getAssociations()) {
                 String name = association.getName();
                 if (params.containsKey(name) && params.get(name) != null) {
                     // 插入前先处理belongsTo,获取其id一起插入
-                    if (association.getType() == Association.Type.BelongsTo) {
+                    if (association.getType() == AssociationInfo.Type.BelongsTo) {
                         Map<String, Object> childData = (Map<String, Object>) params.get(name);
                         Object childId = childData.get(association.getRefId().getName());
                         if (childId != null) {
@@ -175,7 +177,7 @@ public class DefaultSession implements Session {
     @Override
     public void delete(String orql, Map<String, Object> params) {
         try {
-            OrqlNode tree = parser.parse(orql);
+            OrqlNode tree = orqlParser.parse(orql);
             OrqlNode.OrqlRefItem root = tree.getRoot();
             NamedParamSql namedParamSql = new NamedParamSql(orqlToSql.toDelete(root), params);
             sqlExecutor.delete(conn, namedParamSql);
@@ -187,14 +189,14 @@ public class DefaultSession implements Session {
     @Override
     public void update(String orql, Map<String, Object> params) {
         try {
-            OrqlNode tree = parser.parse(orql);
+            OrqlNode tree = orqlParser.parse(orql);
             OrqlNode.OrqlRefItem root = tree.getRoot();
             SchemaInfo schema = root.getRef();
-            for (Association association : schema.getAssociations()) {
+            for (AssociationInfo association : schema.getAssociations()) {
                 String name = association.getName();
                 if (params.containsKey(name) && params.get(name) != null) {
                     // 更改前先处理belongsTo
-                    if (association.getType() == Association.Type.BelongsTo) {
+                    if (association.getType() == AssociationInfo.Type.BelongsTo) {
                         Map<String, Object> childData = (Map<String, Object>) params.get(name);
                         params.put(association.getRefKey(), childData.get(association.getRefId().getName()));
                     }

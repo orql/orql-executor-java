@@ -1,11 +1,11 @@
 package com.github.orql.executor;
 
-import com.github.orql.core.mapper.OrqlResult;
-import com.github.orql.core.mapper.ResultMapper;
-import com.github.orql.core.orql.Parser;
+import com.github.orql.core.orql.OrqlParser;
 import com.github.orql.core.schema.SchemaManager;
 import com.github.orql.core.sql.OrqlToSql;
 import com.github.orql.core.sql.SqlGenerator;
+import com.github.orql.executor.mapper.OrqlResultGen;
+import com.github.orql.executor.mapper.ResultMapper;
 
 import javax.sql.DataSource;
 
@@ -44,7 +44,7 @@ public class Configuration {
     /**
      * orql映射
      */
-    private OrqlResult orqlResult;
+    private OrqlResultGen orqlResultGen;
 
     public Configuration() {
         sqlExecutor = new SqlExecutor();
@@ -52,15 +52,15 @@ public class Configuration {
         sqlGenerator = new SqlGenerator();
         schemaManager = new SchemaManager();
         resultMapper = new ResultMapper();
-        orqlResult = new OrqlResult();
+        orqlResultGen = new OrqlResultGen();
     }
 
     public SchemaManager getSchemaManager() {
         return schemaManager;
     }
 
-    public Parser getParser() {
-        return new Parser(schemaManager);
+    public OrqlParser getOrqlParser() {
+        return new OrqlParser(schemaManager);
     }
 
     public SqlExecutor getSqlExecutor() {
@@ -83,8 +83,8 @@ public class Configuration {
         return resultMapper;
     }
 
-    public OrqlResult getOrqlResult() {
-        return orqlResult;
+    public OrqlResultGen getOrqlResultGen() {
+        return orqlResultGen;
     }
 
     public void setDataSource(DataSource dataSource) {
